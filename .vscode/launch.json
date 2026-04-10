@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+        "type": "java",
+        "name": "App",
+        "request": "launch",
+        "mainClass": "socrates/socrates.App",
+        "projectName": "ui_admin"
+    },
+    {
+        "type": "java",
+        "name": "Run App (ui_admin)",
+        "request": "launch",
+        "mainClass": "socrates.App",
+        "projectName": "ui_admin",
+        "cwd": "${workspaceFolder}/GUI/ui_admin"
+    }
+]
+}
