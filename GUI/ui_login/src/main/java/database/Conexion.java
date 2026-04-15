@@ -54,7 +54,7 @@ public class Conexion {
     private Conexion() {
         Properties props = new Properties();
 
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream("properties/db.properties")) {
+        try (InputStream in = cargarConfigBd()) {
             if (in != null) {
                 props.load(in);
             } else {
@@ -74,6 +74,25 @@ public class Conexion {
     }
 
     /**
+     * Carga db.properties de forma compatible con proyectos modulares (JPMS).
+     */
+    private InputStream cargarConfigBd() {
+        InputStream in = null;
+        try {
+            in = Conexion.class.getModule().getResourceAsStream("properties/db.properties");
+        } catch (IOException e) {
+            LOG.log(Level.FINE, "No se pudo leer properties/db.properties desde Module", e);
+        }
+        if (in == null) {
+            in = Conexion.class.getResourceAsStream("/properties/db.properties");
+        }
+        if (in == null) {
+            in = getClass().getClassLoader().getResourceAsStream("properties/db.properties");
+        }
+        return in;
+    }
+
+    /**
      * Abre la conexión a la base de datos usando JDBC.
      *
      * @return Connection activo, o null si ocurrió un error.
@@ -84,7 +103,14 @@ public class Conexion {
             this.cadena = DriverManager.getConnection(url + db, user, password);
 
             if (!mensajeExitoMostrado) {
-                System.out.println("Conexion exitosa: la conexion a la base de datos fue exitosa.");
+               
+
+                Alert alert = new Alert(AlertType.INFORMATION);
+                alert.setTitle("Conexion exitosa");
+                alert.setHeaderText(null);
+                alert.setContentText("Se conecto correctamente a la base de datos.");
+                alert.showAndWait();
+
                 mensajeExitoMostrado = true;
             }
         } catch (ClassNotFoundException | SQLException e) {

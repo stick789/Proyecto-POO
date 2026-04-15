@@ -2,6 +2,7 @@ package socrates;
 
 import java.io.IOException;
 
+import database.Conexion;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -17,6 +18,7 @@ public class App extends Application {
 
     @Override
     public void start(Stage stage) throws IOException {
+        Conexion.getInstancia().conectar();
         scene = new Scene(loadFXML("primary"), 640, 480);
         stage.setScene(scene);
         stage.show();
