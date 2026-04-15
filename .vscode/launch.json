@@ -6,6 +6,13 @@
         "name": "App",
         "request": "launch",
         "mainClass": "socrates/socrates.App",
+        "projectName": "Proyecto-POO_5808306a"
+    },
+    {
+        "type": "java",
+        "name": "App",
+        "request": "launch",
+        "mainClass": "socrates/socrates.App",
         "projectName": "ui_admin"
     },
     {
