@@ -1,4 +1,4 @@
-package socrates;
+package socratesGui;
 
 import java.io.IOException;
 

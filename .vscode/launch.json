@@ -13,15 +13,15 @@
         "name": "App",
         "request": "launch",
         "mainClass": "socrates/socrates.App",
-        "projectName": "ui_admin"
+        "projectName": "Socrates App"
     },
     {
         "type": "java",
-        "name": "Run App (ui_admin)",
+        "name": "Run App (socratesGui)",
         "request": "launch",
-        "mainClass": "socrates.App",
-        "projectName": "ui_admin",
-        "cwd": "${workspaceFolder}/GUI/ui_admin"
+        "mainClass": "socratesGui.App",
+        "projectName": "Socrates App",
+        "cwd": "${workspaceFolder}/GUI/socratesGui"
     }
 ]
 }
