@@ -75,7 +75,7 @@ como null, ya que no aplica para gimnasios.
         instalacion.descontarCupo();// Descontamos un cupo en la instalación al reservar un turno
         Turno turno = new Turno(idTurno, fechaHora, duracionMinutos, usuario, instalacion);// Creamos y devolvemos un nuevo turno con el estado inicial de RESERVADO
         turno.setNumeroCarrilAsignado(carrilValidado);
-        instalacion.registrarTurno(turno);
+        instalacion.getTurnos().add(turno);
         return turno;
     }
 // Método para cancelar un turno, validando que el turno esté en estado RESERVADO antes de permitir la cancelación
@@ -87,6 +87,7 @@ como null, ya que no aplica para gimnasios.
         }
 
         turno.setEstado(Turno.ESTADO_CANCELADO);// Cambia el estado del turno a CANCELADO
+        HistorialCitasServicio.desdeTurno(turno, "Turno cancelado.");
         turno.getInstalacion().liberarCupo();// Libera un cupo en la instalación al cancelar el turno
     }
 // Método para completar un turno, validando que el turno esté en estado RESERVADO antes de permitir la finalización
@@ -98,6 +99,7 @@ como null, ya que no aplica para gimnasios.
         }
 
         turno.setEstado(Turno.ESTADO_COMPLETADO);// Cambia el estado del turno a COMPLETADO
+        HistorialCitasServicio.desdeTurno(turno, "Turno completado.");
         turno.getInstalacion().liberarCupo();// Libera un cupo en la instalación al completar el turno
     }
 // Método privado para validar que el turno no sea null antes de realizar operaciones sobre él

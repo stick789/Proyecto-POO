@@ -25,22 +25,6 @@ public class Historial_citas {
         this.idInstalacion = idInstalacion;
         this.detalle = detalle;
     }
-// Método para crear una instancia de historial de citas a partir de un turno
-    public static Historial_citas desdeTurno(Turno turno, String detalle) {
-        if (turno == null) {
-            throw new IllegalArgumentException("El turno no puede ser null.");
-        }
-         // Crear un historial a partir de un turno.
-        return new Historial_citas(
-                0,
-                turno.getIdTurno(),
-                turno.getEstado(),
-                LocalDateTime.now(),
-                turno.getUsuario() != null ? turno.getUsuario().getId() : null,
-                turno.getInstalacion() != null ? turno.getInstalacion().getIdInstalacion() : null,
-                detalle
-        );
-    }
 // Getters y Setters para cada atributo del historial de citas
     public int getIdHistorial() {
         return idHistorial;

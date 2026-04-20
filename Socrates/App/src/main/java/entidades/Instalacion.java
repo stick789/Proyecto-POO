@@ -35,15 +35,8 @@ public abstract class Instalacion {
         return aforoActual;
     }
     public List<Turno> getTurnos() { 
-        return new ArrayList<>(turnos);
+        return turnos;
      }
-
-    public void registrarTurno(Turno turno) {
-        if (turno == null) {
-            throw new IllegalArgumentException("El turno no puede ser null.");
-        }
-        turnos.add(turno);
-    }
 //Setters
     public void setIdInstalacion(String idInstalacion) { 
         this.idInstalacion = idInstalacion; 
