@@ -61,14 +61,11 @@ public class Turno {
 
     public String getEstado() { return estado; }
     public void setEstado(String estado) {
-        cambiarEstado(estado);
-    }
-//Metodo para proteger el cambio de estado del turno, validando que solo se puedan asignar los estados permitidos
-    private void cambiarEstado(String nuevoEstado) {
-        if (nuevoEstado == null) {
+        if (estado == null) {
             throw new IllegalArgumentException("El estado no puede ser null.");
         }
-        String normalizado = nuevoEstado.trim().toUpperCase();
+
+        String normalizado = estado.trim().toUpperCase();
         if (!ESTADO_RESERVADO.equals(normalizado)
                 && !ESTADO_CANCELADO.equals(normalizado)
                 && !ESTADO_COMPLETADO.equals(normalizado)) {

@@ -82,9 +82,7 @@ como null, ya que no aplica para gimnasios.
     public void cancelarTurno(Turno turno) {
         validarTurno(turno);
 
-        if (!Turno.ESTADO_RESERVADO.equals(turno.getEstado())) {
-            throw new IllegalStateException("Solo se puede cancelar un turno en estado RESERVADO.");
-        }
+        validarTransicionDesdeReservado(turno, "cancelar");
 
         turno.setEstado(Turno.ESTADO_CANCELADO);// Cambia el estado del turno a CANCELADO
         HistorialCitasServicio.desdeTurno(turno, "Turno cancelado.");
@@ -94,9 +92,7 @@ como null, ya que no aplica para gimnasios.
     public void completarTurno(Turno turno) {
         validarTurno(turno);
 
-        if (!Turno.ESTADO_RESERVADO.equals(turno.getEstado())) {
-            throw new IllegalStateException("Solo se puede completar un turno en estado RESERVADO.");
-        }
+        validarTransicionDesdeReservado(turno, "completar");
 
         turno.setEstado(Turno.ESTADO_COMPLETADO);// Cambia el estado del turno a COMPLETADO
         HistorialCitasServicio.desdeTurno(turno, "Turno completado.");
@@ -106,6 +102,12 @@ como null, ya que no aplica para gimnasios.
     private void validarTurno(Turno turno) {
         if (turno == null) {
             throw new IllegalArgumentException("El turno no puede ser null.");
+        }
+    }
+
+    private void validarTransicionDesdeReservado(Turno turno, String accion) {
+        if (!Turno.ESTADO_RESERVADO.equals(turno.getEstado())) {
+            throw new IllegalStateException("Solo se puede " + accion + " un turno en estado RESERVADO.");
         }
     }
 // Método privado para validar que el número de carril asignado sea válido para la instalación, asegurando que solo se asignen carriles en instalaciones tipo piscina y que el número de carril esté dentro del rango permitido
