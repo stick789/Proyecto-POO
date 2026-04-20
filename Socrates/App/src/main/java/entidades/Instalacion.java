@@ -7,10 +7,9 @@ public abstract class Instalacion {
     private String tipo; // "Piscina" o "Gimnasio"
     private int capacidadMaxima;
     private int aforoActual;
-    private List<Turno> turnos; // Lista de turnos asociados a esta instalación
+    private final List<Turno> turnos = new ArrayList<>(); // Lista de turnos asociados a esta instalación
 
     public Instalacion() {
-        this.turnos = new ArrayList<>();
     }
 
     public Instalacion(String idInstalacion, String tipo, int capacidadMaxima, int aforoActual) {
@@ -18,7 +17,6 @@ public abstract class Instalacion {
         this.tipo = validarTipo(tipo);
         this.capacidadMaxima = capacidadMaxima;
         this.aforoActual = aforoActual;
-        this.turnos = new ArrayList<>();
     }
 
 
@@ -39,6 +37,13 @@ public abstract class Instalacion {
     public List<Turno> getTurnos() { 
         return new ArrayList<>(turnos);
      }
+
+    public void registrarTurno(Turno turno) {
+        if (turno == null) {
+            throw new IllegalArgumentException("El turno no puede ser null.");
+        }
+        turnos.add(turno);
+    }
 //Setters
     public void setIdInstalacion(String idInstalacion) { 
         this.idInstalacion = idInstalacion; 

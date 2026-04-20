@@ -13,6 +13,7 @@ public class Turno {
     private int duracionMinutos;
     private Usuario usuario;                // Usuario que reservó el turno
     private Instalacion instalacion;        // Piscina o Gimnasio
+    private Integer numeroCarrilAsignado;   // Solo aplica para turnos de piscina
     private String estado;                  // "Reservado", "Cancelado", "Completado"
 
     public Turno() {
@@ -49,6 +50,14 @@ public class Turno {
 
     public Instalacion getInstalacion() { return instalacion; }
     public void setInstalacion(Instalacion instalacion) { this.instalacion = instalacion; }
+// Getters y Setters para el número de carril asignado, con validación para asegurar que solo se asignen números de carril válidos
+    public Integer getNumeroCarrilAsignado() { return numeroCarrilAsignado; }
+    public void setNumeroCarrilAsignado(Integer numeroCarrilAsignado) {
+        if (numeroCarrilAsignado != null && numeroCarrilAsignado <= 0) {
+            throw new IllegalArgumentException("El carril debe ser mayor a 0.");
+        }
+        this.numeroCarrilAsignado = numeroCarrilAsignado;
+    }
 
     public String getEstado() { return estado; }
     public void setEstado(String estado) {
@@ -71,7 +80,10 @@ public class Turno {
 
     @Override
     public String toString() {
+        String detalleCarril = numeroCarrilAsignado != null
+                ? " | Carril: " + numeroCarrilAsignado
+                : "";
         return "Turno " + idTurno + " | " + fechaHora + " | " + instalacion.getTipo() +
-               " | Estado: " + estado;
+               detalleCarril + " | Estado: " + estado;
     }
 }
