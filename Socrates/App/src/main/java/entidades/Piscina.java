@@ -1,14 +1,14 @@
 package entidades;
 
-public class Picsina extends Instalacion {
+public class Piscina extends Instalacion {
     private int numeroCarriles;
     private double profundidad; // En metros
 
-    public Picsina() {
+    public Piscina() {
         super();
     }
 
-    public Picsina(String idInstalacion, String tipo, int capacidadMaxima, int aforoActual,
+    public Piscina(String idInstalacion, String tipo, int capacidadMaxima, int aforoActual,
                      int numeroCarriles, double profundidad) {
         super(idInstalacion, tipo, capacidadMaxima, aforoActual);
         this.numeroCarriles = numeroCarriles;

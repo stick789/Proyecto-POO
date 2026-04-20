@@ -6,7 +6,7 @@ package LogicaCita;
 import java.time.LocalDateTime;
 
 import entidades.Instalacion;
-import entidades.Picsina;
+import entidades.Piscina;
 import entidades.Turno;
 import entidades.Usuario;
 
@@ -56,8 +56,8 @@ el método asignarCarrilAutomatico. Si la instalación no es una piscina, el car
 como null, ya que no aplica para gimnasios.
 */
         Integer carrilAsignado = null;// Para turnos de piscina, se asigna automáticamente un carril disponible
-        if (instalacion instanceof Picsina) {
-            Picsina picsina = (Picsina) instalacion;
+        if (instalacion instanceof Piscina) {
+            Piscina picsina = (Piscina) instalacion;
             carrilAsignado = asignarCarrilAutomatico(picsina);
         }
 
@@ -112,8 +112,8 @@ como null, ya que no aplica para gimnasios.
     }
 // Método privado para validar que el número de carril asignado sea válido para la instalación, asegurando que solo se asignen carriles en instalaciones tipo piscina y que el número de carril esté dentro del rango permitido
     private Integer validarCarril(Instalacion instalacion, Integer numeroCarril) {
-        if (instalacion instanceof Picsina) {// Solo se asignan carriles para instalaciones tipo piscina
-            Picsina picsina = (Picsina) instalacion;
+        if (instalacion instanceof Piscina) {// Solo se asignan carriles para instalaciones tipo piscina
+            Piscina picsina = (Piscina) instalacion;
             if (numeroCarril == null) {
                 throw new IllegalArgumentException("Debe asignar un carril para reservas de piscina.");
             }
@@ -136,7 +136,7 @@ como null, ya que no aplica para gimnasios.
         return null;
     }
 // Método privado para asignar automáticamente un carril en una piscina, utilizando el aforo actual para determinar el siguiente carril disponible de manera cíclica
-    private int asignarCarrilAutomatico(Picsina picsina) {
+    private int asignarCarrilAutomatico(Piscina picsina) {
         int carriles = picsina.getNumeroCarriles();
         if (carriles <= 0) {
             throw new IllegalStateException("La piscina no tiene carriles configurados.");
@@ -151,7 +151,7 @@ como null, ya que no aplica para gimnasios.
         throw new IllegalStateException("No hay carriles disponibles. Todos alcanzaron el maximo de " + maxPersonasPorCarril + " personas.");
     }
 
-    private int contarReservasActivasEnCarril(Picsina picsina, int numeroCarril) {
+    private int contarReservasActivasEnCarril(Piscina picsina, int numeroCarril) {
         int reservas = 0;
         for (Turno turno : picsina.getTurnos()) {
             Integer carril = turno.getNumeroCarrilAsignado();
