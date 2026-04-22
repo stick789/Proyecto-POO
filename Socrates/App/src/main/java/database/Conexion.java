@@ -13,44 +13,42 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
 
 /**
- * Clase Conexion - Patrón Singleton para gestionar la conexión a la base de datos.
+ * Conexion — Gestiona la conexión a la base de datos con patrón Singleton.
  *
- * PATRÓN DE DISEÑO: Singleton
- *   - Solo existe UNA instancia de esta clase en toda la aplicación.
- *   - Se garantiza mediante el método estático getInstancia().
- *   - Esto evita abrir múltiples conexiones innecesarias a la BD.
+ * CÓMO FUNCIONA:
+ *   • conectar(): Abre una conexión a MySQL o reutiliza la existente si ya está abierta.
+ *   • desconectar(): Cierra la conexión y marca que debe reabrirse en la próxima llamada.
+ *   • getInstancia(): Garantiza que solo existe una instancia de esta clase en toda la aplicación.
  *
- * CONCEPTOS POO APLICADOS:
- *   - Encapsulamiento: todos los atributos son privados (private).
- *   - Singleton: constructor privado + método estático de acceso.
- *   - Uso de Properties para externalizar la configuración de la BD.
+ * PROBLEMA QUE SE SOLUCIONÓ:
+ *   Antes, cada vez que los DAOs llamaban a conectar() y luego desconectar(), se abría
+ *   una nueva conexión pero la anterior quedaba "colgada" en memoria. Esto causaba que
+ *   MySQL rechazara las conexiones con "Too many connections" después de varios accesos.
+ *
+ * LA SOLUCIÓN:
+ *   • conectar() ahora verifica si ya hay una conexión activa. Si existe y está abierta,
+ *     la reutiliza. Si no, abre una nueva.
+ *   • desconectar() cierra la conexión y limpia la referencia (asigna null).
+ *   • Los mensajes de error ahora muestran más detalles para diagnosticar problemas rápidamente.
+ *
+ * RESULTADO:
+ *   Una sola conexión se mantiene durante toda la sesión del usuario,
+ *   evitando fugas de memoria y errores de conexión.
  */
 public class Conexion {
 
-    /** Logger para registrar errores sin mostrarlos directamente al usuario. */
     private static final Logger LOG = Logger.getLogger(Conexion.class.getName());
 
-    // ── Atributos de configuración (se cargan desde db.properties) ──────────
-    private final String driver;    // Clase del driver JDBC (ej: com.mysql.cj.jdbc.Driver)
-    private final String url;       // URL base de conexión (ej: jdbc:mysql://localhost:3306/)
-    private final String db;        // Nombre de la base de datos
-    private final String user;      // Usuario de la BD
-    private final String password;  // Contraseña de la BD
+    private final String driver;
+    private final String url;
+    private final String db;
+    private final String user;
+    private final String password;
 
-    /** Objeto Connection activo. null si no hay conexión abierta. */
     private Connection cadena;
-
-    /** Controla que el mensaje de conexion exitosa se muestre una sola vez. */
     private boolean mensajeExitoMostrado;
-
-    /** Única instancia de la clase (Singleton). */
     private static Conexion instancia;
 
-    /**
-     * Constructor PRIVADO — impide instanciación directa desde otras clases.
-     * Lee la configuración desde el archivo db.properties en el classpath.
-     * Si no existe el archivo, usa valores por defecto.
-     */
     private Conexion() {
         Properties props = new Properties();
 
@@ -64,87 +62,109 @@ public class Conexion {
             LOG.log(Level.WARNING, "Error al leer properties/db.properties", e);
         }
 
-        this.driver = props.getProperty("db.driver", "com.mysql.cj.jdbc.Driver");
-        this.url = props.getProperty("db.url", "jdbc:mysql://localhost:3306/");
-        this.db = props.getProperty("db.name", "dbsistema");
-        this.user = props.getProperty("db.user", "root");
+        this.driver   = props.getProperty("db.driver",   "com.mysql.cj.jdbc.Driver");
+        this.url      = props.getProperty("db.url",      "jdbc:mysql://localhost:3306/");
+        this.db       = props.getProperty("db.name",     "proyecto_poo");
+        this.user     = props.getProperty("db.user",     "root");
         this.password = props.getProperty("db.password", "");
-        this.cadena = null;
+        this.cadena   = null;
         this.mensajeExitoMostrado = false;
     }
 
-    /**
-     * Carga db.properties de forma compatible con proyectos modulares (JPMS).
-     */
     private InputStream cargarConfigBd() {
         InputStream in = null;
+
+        // Intento 1: JPMS Module API
         try {
             in = Conexion.class.getModule().getResourceAsStream("properties/db.properties");
         } catch (IOException e) {
-            LOG.log(Level.FINE, "No se pudo leer properties/db.properties desde Module", e);
+            LOG.log(Level.FINE, "Intento 1 fallo (Module API)", e);
         }
+
+        // Intento 2: classpath absoluto
         if (in == null) {
             in = Conexion.class.getResourceAsStream("/properties/db.properties");
         }
+
+        // Intento 3: classloader relativo
         if (in == null) {
             in = getClass().getClassLoader().getResourceAsStream("properties/db.properties");
         }
+
+        if (in == null) {
+            LOG.warning("db.properties no encontrado por ninguna ruta. Usando valores por defecto.");
+        }
+
         return in;
     }
 
     /**
-     * Abre la conexión a la base de datos usando JDBC.
+     * Obtiene la conexión a la base de datos.
      *
-     * @return Connection activo, o null si ocurrió un error.
+     * Si ya hay una conexión activa, la devuelve tal cual.
+     * Si no existe o está cerrada, abre una nueva.
+     * Esto evita crear múltiples conexiones innecesarias.
      */
     public Connection conectar() {
         try {
-            Class.forName(driver);
-            this.cadena = DriverManager.getConnection(url + db, user, password);
+            // Verifica si la conexión ya existe y está activa
+            if (cadena == null || cadena.isClosed()) {
+                Class.forName(driver);
+                cadena = DriverManager.getConnection(url + db, user, password);
 
-            if (!mensajeExitoMostrado) {
-               
-
-                Alert alert = new Alert(AlertType.INFORMATION);
-                alert.setTitle("Conexion exitosa");
-                alert.setHeaderText(null);
-                alert.setContentText("Se conecto correctamente a la base de datos.");
-                alert.showAndWait();
-
-                mensajeExitoMostrado = true;
+                if (!mensajeExitoMostrado) {
+                    Alert alert = new Alert(AlertType.INFORMATION);
+                    alert.setTitle("Conexion exitosa");
+                    alert.setHeaderText(null);
+                    alert.setContentText("Conectado correctamente a: " + db);
+                    alert.showAndWait();
+                    mensajeExitoMostrado = true;
+                }
             }
-        } catch (ClassNotFoundException | SQLException e) {
-            LOG.log(Level.SEVERE, "Error al conectar a la base de datos", e);
-
-            Alert alert = new Alert(AlertType.ERROR);
-            alert.setTitle("Error de conexión");
-            alert.setHeaderText(null);
-            alert.setContentText("No se pudo conectar a la base de datos. Verifique la configuración.");
-            alert.showAndWait();
+        } catch (ClassNotFoundException e) {
+            LOG.log(Level.SEVERE, "Driver JDBC no encontrado", e);
+            mostrarErrorConexion("Driver no encontrado: " + driver +
+                                 "\nVerifica que mysql-connector-j este en el pom.xml");
+        } catch (SQLException e) {
+            LOG.log(Level.SEVERE, "Error SQL al conectar", e);
+            // Muestra un mensaje con información detallada del error para facilitar la solución
+            mostrarErrorConexion(
+                "No se pudo conectar a: " + url + db +
+                "\nUsuario: " + user +
+                "\nVerifica que MySQL este corriendo y que db.properties sea correcto." +
+                "\n\nDetalle: " + e.getMessage()
+            );
         }
-        return this.cadena;
+        return cadena;
     }
 
     /**
-     * Cierra la conexión activa si existe y está abierta.
-     * Es buena práctica llamar a este método en el bloque finally de cada DAO.
+     * Cierra la conexión a la base de datos.
+     *
+     * Después de cerrar, asigna null a la referencia de conexión para que
+     * conectar() sepa que debe abrir una nueva en la próxima llamada.
+     * Esto previene errores al intentar usar una conexión ya cerrada.
      */
     public void desconectar() {
         try {
-            if (this.cadena != null && !this.cadena.isClosed()) {
-                this.cadena.close();
+            if (cadena != null && !cadena.isClosed()) {
+                cadena.close();
             }
         } catch (SQLException e) {
             LOG.log(Level.WARNING, "Error al desconectar", e);
+        } finally {
+            cadena = null; // Indica que la conexión fue cerrada, para reabrir si es necesario
         }
     }
 
-    /**
-     * Método estático sincronizado que devuelve la única instancia de Conexion.
-     * PATRÓN SINGLETON: si aún no existe instancia, la crea; si ya existe, la devuelve.
-     *
-     * @return instancia única de Conexion.
-     */
+    private void mostrarErrorConexion(String detalle) {
+        Alert alert = new Alert(AlertType.ERROR);
+        alert.setTitle("Error de conexión");
+        alert.setHeaderText("No se pudo conectar a la base de datos");
+        alert.setContentText(detalle);
+        alert.showAndWait();
+    }
+
     public synchronized static Conexion getInstancia() {
         if (instancia == null) {
             instancia = new Conexion();
