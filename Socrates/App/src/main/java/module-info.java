@@ -15,7 +15,7 @@ module socratesGui {
     exports database;
     exports dao;
     exports LogicaCita;
-    
+    exports negocio;
 
     // Abre 'database' para que el classloader pueda leer db.properties
     // dentro del módulo usando getModule().getResourceAsStream()

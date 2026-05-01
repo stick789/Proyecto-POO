@@ -58,21 +58,6 @@ public class ValidadorTurno {
     }
 
     /**
-     * Valida que la instalación tenga al menos un cupo disponible.
-     */
-    public void validarInstalacionConCupos(Instalacion instalacion) {
-        if (instalacion == null) {
-            throw new IllegalArgumentException("La instalacion no puede ser null.");
-        }
-        if (instalacion.getAforoActual() <= 0) {
-            throw new IllegalStateException(
-                "La instalacion '" + instalacion.getTipo() +
-                "' no tiene cupos disponibles en este momento."
-            );
-        }
-    }
-
-    /**
      * Comprueba si dos turnos se solapan en tiempo.
      * Retorna true si el nuevo turno coincide con alguno existente.
      * Solo analiza turnos en estado RESERVADO.
@@ -113,15 +98,67 @@ public class ValidadorTurno {
     }
 
     /**
+     * Limita la cantidad de citas reservadas por usuario en un mismo día.
+     */
+    public void validarMaximoCitasPorDia(List<Turno> turnosActivosUsuario, LocalDateTime nuevaFechaHora) {
+        if (nuevaFechaHora == null) {
+            throw new IllegalArgumentException("La fecha y hora del turno no puede ser null.");
+        }
+
+        int turnosDelDia = 0;
+        if (turnosActivosUsuario != null) {
+            for (Turno turno : turnosActivosUsuario) {
+                if (turno != null
+                        && turno.getFechaHora() != null
+                        && turno.getFechaHora().toLocalDate().equals(nuevaFechaHora.toLocalDate())) {
+                    turnosDelDia++;
+                }
+            }
+        }
+
+        if (turnosDelDia >= 3) {
+            throw new IllegalStateException("Solo se permiten un máximo de 3 citas por día para un usuario.");
+        }
+    }
+    // Valida disponibilidad y capacidad maxima de la instalacion.
+    private void validarCapacidadGlobal(Instalacion instalacion, List<Turno> turnosActivos) {
+        if (instalacion == null) {
+            throw new IllegalArgumentException("La instalacion no puede ser null.");
+        }
+        // Verifica que la instalación tenga cupos disponibles (aforoActual > 0)
+        if (instalacion.getAforoActual() <= 0) {
+            throw new IllegalStateException(
+                "La instalacion '" + instalacion.getTipo() +
+                "' no tiene cupos disponibles en este momento."
+            );
+        }
+        // Si la instalación tiene una capacidad máxima definida (>0), verifica que no se haya alcanzado.
+        if (instalacion.getCapacidadMaxima() > 0) {
+            int reservasActivas = turnosActivos == null ? 0 : turnosActivos.size();
+            if (reservasActivas >= instalacion.getCapacidadMaxima()) {
+                throw new IllegalStateException(
+                    "La instalacion '" + instalacion.getTipo() +
+                    "' ha alcanzado su capacidad maxima de " + instalacion.getCapacidadMaxima() + " reservas."
+                );
+            }
+        }
+    }
+    
+
+
+    /**
      * Valida todas las condiciones juntas antes de persistir una reserva.
      */
     public void validarReserva(Instalacion instalacion,
                                LocalDateTime fechaHora,
                                int duracion,
-                               List<Turno> turnosActivos) {
+                               List<Turno> turnosActivosUsuario,
+                               List<Turno> reservasActivasInstalacion) {
         validarFechaFutura(fechaHora);
         validarDuracion(duracion);
-        validarInstalacionConCupos(instalacion);
-        validarSinSolapamiento(turnosActivos, fechaHora, duracion);
+        validarSinSolapamiento(turnosActivosUsuario, fechaHora, duracion);
+        validarMaximoCitasPorDia(turnosActivosUsuario, fechaHora);
+        validarCapacidadGlobal(instalacion, reservasActivasInstalacion);
     }
+        
 }

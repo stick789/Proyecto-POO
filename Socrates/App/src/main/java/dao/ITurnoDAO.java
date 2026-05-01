@@ -1,8 +1,9 @@
 package dao;
 
-import entidades.Turno;
 import java.util.List;
 import java.util.Optional;
+
+import entidades.Turno;
 
 /**
  * Contrato para acceder a los datos de turnos.
@@ -40,6 +41,11 @@ public interface ITurnoDAO {
      * Cambia el estado de un turno (RESERVADO, CANCELADO, COMPLETADO).
      */
     void actualizarEstado(int idTurno, String nuevoEstado);
+    /**
+     * Actualiza el id del entrenador asociado a un turno.
+     * Puede ser null si no hay entrenador asignado.
+     */
+    void actualizarEntrenador(int idTurno, Integer idEntrenador);
  
     /**
      * Borra un turno de la base de datos.

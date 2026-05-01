@@ -1,5 +1,4 @@
 package entidades;
-
 import java.time.LocalDateTime;
 
 public class Turno {
@@ -15,6 +14,7 @@ public class Turno {
     private Instalacion instalacion;        // Piscina o Gimnasio
     private Integer numeroCarrilAsignado;   // Solo aplica para turnos de piscina
     private String estado;                  // "Reservado", "Cancelado", "Completado"
+    private Persona entrenador;
 
     public Turno() {
         this.estado = ESTADO_RESERVADO;
@@ -50,6 +50,14 @@ public class Turno {
 
     public Instalacion getInstalacion() { return instalacion; }
     public void setInstalacion(Instalacion instalacion) { this.instalacion = instalacion; }
+
+    public Persona getEntrenador() { return entrenador; }
+    public void setEntrenador(Persona entrenador) { this.entrenador = entrenador;}
+
+    //helper para Id Entrenador
+    public Integer getIdEntrenador() {
+        return entrenador != null ? entrenador.getId() : null;
+    }
 // Getters y Setters para el número de carril asignado, con validación para asegurar que solo se asignen números de carril válidos
     public Integer getNumeroCarrilAsignado() { return numeroCarrilAsignado; }
     public void setNumeroCarrilAsignado(Integer numeroCarrilAsignado) {

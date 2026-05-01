@@ -50,4 +50,7 @@ public void setNumDocumento(String numDocumento){
 }
 // Método abstracto para obtener el rol de la persona (usuario o administrador)
 public abstract String getRol();
+
+// Método abstracto para obtener el ID de la persona
+public abstract int getId();
 }

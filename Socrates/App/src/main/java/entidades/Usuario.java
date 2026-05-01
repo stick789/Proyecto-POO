@@ -40,9 +40,14 @@ public Usuario(int idUsuario, String nombre, String email, String tipoDocumento,
 
    
     // Getters
+    @Override
     public int getId() {
         return idUsuario;
     }
+    public String getRolBD() {
+        return rolBD;
+    }
+
     public String getContraseña() {
         return contraseña;
     }
@@ -66,10 +71,7 @@ public Usuario(int idUsuario, String nombre, String email, String tipoDocumento,
                          !categoria.trim().equalsIgnoreCase("NO AFILIADO");// Si la categoría es nula o "NO AFILIADO", el usuario no es considerado afiliado
     }
 
-    public String getRolBD() {
-        return rolBD;
-    }
-
+    
     public void setRolBD(String rolBD) {
         this.rolBD = rolBD;
     }
@@ -80,4 +82,6 @@ public Usuario(int idUsuario, String nombre, String email, String tipoDocumento,
         // Prioriza el rol desde BD si está disponible, sino usa la clase por defecto
         return rolBD != null ? rolBD : "USUARIO";
     }
+
+    
 }

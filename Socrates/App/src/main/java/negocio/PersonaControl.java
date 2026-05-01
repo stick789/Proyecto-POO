@@ -1,7 +1,6 @@
 package negocio;
 
 import entidades.Persona;
-import entidades.Usuario;
 
 /**
  * PersonaControl centraliza las reglas de permisos por rol.
@@ -10,7 +9,7 @@ import entidades.Usuario;
  * Administrador además puede administrar historial y modificar usuarios.
  * Entrenador queda como rol reconocido, pero sin permisos sobre citas.
  *
- * Ahora lee los roles desde la base de datos a través de PersonaDAO.
+ *  Lee los roles desde la base de datos a través de PersonaDAO.
  */
 public class PersonaControl {
 
@@ -21,7 +20,8 @@ public class PersonaControl {
         ADMINISTRAR_HISTORIAL,
         MODIFICAR_USUARIO,
         ELIMINAR_USUARIO,
-        LISTAR_USUARIOS
+        LISTAR_USUARIOS,
+        ASIGNAR_TURNO_ENTRENADOR
     }
 
     public boolean esUsuario(Persona persona) {
@@ -44,25 +44,18 @@ public class PersonaControl {
 
     /**
      * Obtiene el rol de una persona, priorizando el valor desde BD.
-     * Si la persona es Usuario, obtiene el rol desde la BD.
-     * En otros casos, usa getRol() de la clase.
+     * Delegamos en la propia instancia para mantener el comportamiento polimórfico.
      */
     private String obtenerRol(Persona persona) {
         if (persona == null) {
             return "";
-        }
-        if (persona instanceof Usuario) {
-            Usuario usuario = (Usuario) persona;
-            if (usuario.getRolBD() != null) {
-                return usuario.getRolBD();
-            }
         }
         return persona.getRol();
     }
 
     public boolean puedeRealizar(Persona persona, OperacionPersona operacion) {
         if (persona == null || operacion == null) {
-            return false;
+            throw new IllegalArgumentException("La persona y la operación no pueden ser null.");
         }
 
         switch (operacion) {
@@ -75,6 +68,7 @@ public class PersonaControl {
             case MODIFICAR_USUARIO:
             case ELIMINAR_USUARIO:
             case LISTAR_USUARIOS:
+            case ASIGNAR_TURNO_ENTRENADOR:
                 return esAdministrador(persona);
 
             default:
@@ -86,33 +80,5 @@ public class PersonaControl {
         if (!puedeRealizar(persona, operacion)) {
             throw new IllegalAccessError("La persona no tiene permiso para realizar la operación: " + operacion);
         }
-    }
-
-    public boolean puedeAgendarCitas(Persona persona) {
-        return puedeRealizar(persona, OperacionPersona.AGENDAR_CITA);
-    }
-
-    public boolean puedeCancelarCitas(Persona persona) {
-        return puedeRealizar(persona, OperacionPersona.CANCELAR_CITA);
-    }
-
-    public boolean puedeReagendarCitas(Persona persona) {
-        return puedeRealizar(persona, OperacionPersona.REAGENDAR_CITA);
-    }
-
-    public boolean puedeAdministrarHistorial(Persona persona) {
-        return puedeRealizar(persona, OperacionPersona.ADMINISTRAR_HISTORIAL);
-    }
-
-    public boolean puedeModificarUsuario(Persona persona) {
-        return puedeRealizar(persona, OperacionPersona.MODIFICAR_USUARIO);
-    }
-
-    public boolean puedeEliminarUsuario(Persona persona) {
-        return puedeRealizar(persona, OperacionPersona.ELIMINAR_USUARIO);
-    }
-
-    public boolean puedeListarUsuarios(Persona persona) {
-        return puedeRealizar(persona, OperacionPersona.LISTAR_USUARIOS);
     }
 }

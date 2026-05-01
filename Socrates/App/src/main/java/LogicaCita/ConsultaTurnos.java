@@ -10,7 +10,9 @@ import java.util.stream.Collectors;
 import dao.IInstalacionDAO;
 import dao.ITurnoDAO;
 import entidades.Instalacion;
+import entidades.Persona;
 import entidades.Turno;
+import negocio.PersonaControl;
 
 /**
  * ConsultaTurnos — servicio dedicado SOLO a consultas y filtros.
@@ -30,11 +32,48 @@ public class ConsultaTurnos {
     private final ITurnoDAO        turnoDAO;
     private final IInstalacionDAO  instalacionDAO;
     private final ValidadorTurno   validador;
+    private final PersonaControl   personaControl;
 
     public ConsultaTurnos(ITurnoDAO turnoDAO, IInstalacionDAO instalacionDAO) {
         this.turnoDAO       = turnoDAO;
         this.instalacionDAO = instalacionDAO;
         this.validador      = new ValidadorTurno();
+        this.personaControl = new PersonaControl();
+    }
+
+    // Métodos que reciben el actor y aplican control de acceso
+
+    public List<Turno> obtenerTurnosActivosPorUsuario(int idUsuario, Persona actor) {
+        if (actor == null) throw new IllegalArgumentException("El actor no puede ser null.");
+        boolean esAdmin = personaControl.esAdministrador(actor);
+        if (!esAdmin) {
+            if (!(actor instanceof entidades.Usuario) || ((entidades.Usuario) actor).getId() != idUsuario) {
+                throw new IllegalAccessError("Solo el usuario mismo o un administrador puede ver estos turnos.");
+            }
+        }
+        return obtenerTurnosActivosPorUsuario(idUsuario);
+    }
+
+    public java.util.Optional<Turno> obtenerProximoTurno(int idUsuario, Persona actor) {
+        if (actor == null) throw new IllegalArgumentException("El actor no puede ser null.");
+        boolean esAdmin = personaControl.esAdministrador(actor);
+        if (!esAdmin) {
+            if (!(actor instanceof entidades.Usuario) || ((entidades.Usuario) actor).getId() != idUsuario) {
+                throw new IllegalAccessError("Solo el usuario mismo o un administrador puede ver este turno.");
+            }
+        }
+        return obtenerProximoTurno(idUsuario);
+    }
+
+    public List<Turno> obtenerHistorialPorUsuario(int idUsuario, Persona actor) {
+        if (actor == null) throw new IllegalArgumentException("El actor no puede ser null.");
+        boolean esAdmin = personaControl.esAdministrador(actor);
+        if (!esAdmin) {
+            if (!(actor instanceof entidades.Usuario) || ((entidades.Usuario) actor).getId() != idUsuario) {
+                throw new IllegalAccessError("Solo el usuario mismo o un administrador puede ver el historial.");
+            }
+        }
+        return obtenerHistorialPorUsuario(idUsuario);
     }
 
     // ── Consultas por usuario ──────────────────────────────────────────────────

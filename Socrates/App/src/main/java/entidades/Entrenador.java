@@ -3,10 +3,11 @@ package entidades;
 public class Entrenador extends Persona  {
     private String especialidad; //  "Natación", "Gimnasio"
     private String rolBD; // Rol leído desde la base de datos
-
-    public Entrenador(String nombre, String email, String especialidad, String tipoDocumento, String numDocumento) {
+    private int idEntrenador; 
+    public Entrenador(String nombre, String email, String especialidad, String tipoDocumento, String numDocumento, int idEntrenador ) {
         super(nombre, email, tipoDocumento, numDocumento);
-        this.especialidad = especialidad;
+        this.especialidad = especialidad; //Natación o Gimnasio
+        this.idEntrenador = idEntrenador;
     }
 
     public String getEspecialidad() {
@@ -24,10 +25,20 @@ public class Entrenador extends Persona  {
     public void setRolBD(String rolBD) {
         this.rolBD = rolBD;
     }
+    @Override
+    public int getId() {
+        return idEntrenador;
+    }
 
+    public void setIdEntrenador(int idEntrenador) {
+        this.idEntrenador = idEntrenador;
+    }
     @Override
     public String getRol() {
         // Prioriza el rol desde BD si está disponible, sino usa la clase por defecto
         return rolBD != null ? rolBD : "ENTRENADOR";
     }
+
+   
 }
+

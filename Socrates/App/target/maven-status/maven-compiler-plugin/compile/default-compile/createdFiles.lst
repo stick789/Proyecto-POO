@@ -7,9 +7,6 @@ entidades\Gimnasio.class
 module-info.class
 database\Conexion.class
 entidades\Instalacion.class
-LogicaAdmin\GestorCitas.class
-LogicaAdmin\MainLogic.class
-LogicaAdmin\Cliente.class
 entidades\Historial_citas.class
 entidades\Turno.class
 entidades\Persona.class

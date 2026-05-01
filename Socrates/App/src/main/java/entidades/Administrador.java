@@ -17,9 +17,13 @@ public class Administrador extends Persona {
 }
 
 // Getters
-public int getIdAdmin() {
+@Override
+public int getId() {
     return id_administrador;
 }
+ public String getRolBD() {
+        return rolBD;
+    }
 public String getContraseñaAdmin() {
     return contraseña_administrador;
 }
@@ -31,9 +35,7 @@ public void setContraseñaAdmin(String contraseña_administrador){
     this.contraseña_administrador = contraseña_administrador;
 }
 
-    public String getRolBD() {
-        return rolBD;
-    }
+
 
     public void setRolBD(String rolBD) {
         this.rolBD = rolBD;

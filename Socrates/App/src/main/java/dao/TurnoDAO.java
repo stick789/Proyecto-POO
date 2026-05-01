@@ -71,7 +71,8 @@ public class TurnoDAO implements ITurnoDAO {
 
     private static final String SQL_DELETE =
             "DELETE FROM turno WHERE idTurno = ?";
-
+    private static final String SQL_UPDATE_ENTRENADOR =
+            "UPDATE turno SET id_entrenador = ? WHERE idTurno = ?";
     // ── Implementación ─────────────────────────────────────────────────────────
 
     @Override
@@ -171,6 +172,25 @@ public class TurnoDAO implements ITurnoDAO {
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Error al eliminar turno id=" + id, e);
+        } finally {
+            conexion.desconectar();
+        }
+    }
+    @Override
+    public void actualizarEntrenador(int idTurno, Integer idEntrenador) {
+        Connection con = conexion.conectar();
+        if (con == null) return;
+
+        try (PreparedStatement ps = con.prepareStatement(SQL_UPDATE_ENTRENADOR)) {
+            if (idEntrenador != null) {
+                ps.setInt(1, idEntrenador);
+            } else {
+                ps.setNull(1, Types.INTEGER);
+            }
+            ps.setInt(2, idTurno);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al actualizar entrenador del turno", e);
         } finally {
             conexion.desconectar();
         }
