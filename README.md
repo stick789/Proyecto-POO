@@ -6,8 +6,8 @@
 # Pendientes del proyecto 
 -  Agregar entidad entrenador, corregir ciertos aspectos de la logica del codigo
 >[!NOTE]
->Agregar la entidad entrenador no como una persona que puede ingresar al sistema, sino, por el momento, unicamente con los metodos correspondientes para que pueda ser asignado a turnos de piscina o gimnasio para.
->Corregir en el paquete DAO, debido a que la clase padre es Perosna.
->Terminar la parte de logica de negocio
+>Agregar la entidad entrenador no como una persona que puede ingresar al sistema, sino que, por el momento, unicamente con los metodos correspondientes para que pueda ser asignado a turnos de piscina o gimnasio para.☑️
+>Corregir en el paquete DAO, debido a que la clase padre es Perosna.☑️
+>Terminar la parte de logica de negocio 
 >Agragar Pagos en la base de datos, en el DAO y en negocio
->Corregir logica del Gestor de Citas ✅
+>Corregir logica del Gestor de Citas ☑️
