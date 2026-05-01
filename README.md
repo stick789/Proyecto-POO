@@ -10,4 +10,4 @@
 >Corregir en el paquete DAO, debido a que la clase padre es Perosna.
 >Terminar la parte de logica de negocio
 >Agragar Pagos en la base de datos, en el DAO y en negocio
->Corregir logica del Gestor de Citas
+>Corregir logica del Gestor de Citas ✅
