@@ -1,13 +1,16 @@
 package LogicaCita;
 
-import dao.IHistorialCitasDAO;
-import dao.IInstalacionDAO;
-import dao.ITurnoDAO;
-import entidades.*;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import dao.IHistorialCitasDAO;
+import dao.IInstalacionDAO;
+import dao.ITurnoDAO;
+import entidades.Instalacion;
+import entidades.Piscina;
+import entidades.Turno;
+import entidades.Usuario;
 
 /**
  * ServicioTurnos — Gestiona operaciones de reserva, cancelación, completación y reagendamiento de turnos.

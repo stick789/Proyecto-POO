@@ -1,10 +1,10 @@
 package LogicaCita;
 
-import entidades.Turno;
-import entidades.Usuario;
-
 import java.time.Duration;
 import java.time.LocalDateTime;
+
+import entidades.Turno;
+import entidades.Usuario;
 
 /**
  * PoliticaCancelacion — Define las reglas y restricciones para cancelar turnos.

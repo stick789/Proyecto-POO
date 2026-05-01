@@ -1,10 +1,10 @@
 package LogicaCita;
 
-import entidades.Instalacion;
-import entidades.Turno;
-
 import java.time.LocalDateTime;
 import java.util.List;
+
+import entidades.Instalacion;
+import entidades.Turno;
 
 /**
  * ValidadorTurno — Centraliza todas las validaciones de reglas de negocio para turnos.
