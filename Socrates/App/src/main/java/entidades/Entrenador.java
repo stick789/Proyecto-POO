@@ -1,7 +1,7 @@
 package entidades;
 
 public class Entrenador extends Persona  {
-    private String especialidad;
+    private String especialidad; //  "Natación", "Gimnasio"
 
     public Entrenador(String nombre, String email, String especialidad, String tipoDocumento, String numDocumento) {
         super(nombre, email, tipoDocumento, numDocumento);

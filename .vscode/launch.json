@@ -6,21 +6,21 @@
         "name": "MainLogic",
         "request": "launch",
         "mainClass": "socratesGui/negocio.LogicaAdmin.MainLogic",
-        "projectName": "ui_admin"
+        "projectName": "Socrates App"
     },
     {
         "type": "java",
         "name": "MainLogic",
         "request": "launch",
         "mainClass": "socratesGui/LogicaAdmin.MainLogic",
-        "projectName": "ui_admin"
+        "projectName": "Socrates App"
     },
     {
         "type": "java",
         "name": "App",
         "request": "launch",
         "mainClass": "socratesGui/socratesGui.App",
-        "projectName": "ui_admin"
+        "projectName": "Socrates App"
     },
     {
         "type": "java",
