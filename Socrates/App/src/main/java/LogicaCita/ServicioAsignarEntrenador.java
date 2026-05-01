@@ -67,7 +67,7 @@ public class ServicioAsignarEntrenador {
 // Método helper para validar que la especialidad del entrenador es compatible con el tipo de instalación
 private boolean EspecialidadCompatible(Entrenador entrenador, Instalacion instalacion) {
     String especialidad = entrenador.getEspecialidad();
-
+    // Para piscinas, el entrenador debe tener especialidad en natación; para gimnasios, en gimnasio.
     if (instalacion instanceof Piscina){
         return "Natación".equalsIgnoreCase(especialidad);
     }
