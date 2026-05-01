@@ -7,6 +7,7 @@ public class Usuario extends Persona {
     private String contraseña;
     private boolean esAfiliado;
     private String categoria; //puede se A B o C o  null si no es afiliado
+    private String rolBD; // Rol leído desde la base de datos
 
 public Usuario() {
     super();
@@ -65,12 +66,18 @@ public Usuario(int idUsuario, String nombre, String email, String tipoDocumento,
                          !categoria.trim().equalsIgnoreCase("NO AFILIADO");// Si la categoría es nula o "NO AFILIADO", el usuario no es considerado afiliado
     }
 
+    public String getRolBD() {
+        return rolBD;
+    }
 
-// Implementación del método abstracto de la clase persona
-@Override
-public String getRol() {
-    return "USUARIO";
-    
-}
+    public void setRolBD(String rolBD) {
+        this.rolBD = rolBD;
+    }
 
+    // Implementación del método abstracto de la clase persona
+    @Override
+    public String getRol() {
+        // Prioriza el rol desde BD si está disponible, sino usa la clase por defecto
+        return rolBD != null ? rolBD : "USUARIO";
+    }
 }

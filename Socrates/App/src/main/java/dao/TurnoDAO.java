@@ -1,15 +1,21 @@
 package dao;
 
-import database.Conexion;
-import entidades.Instalacion;
-import entidades.Turno;
-import entidades.Usuario;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+
+import database.Conexion;
+import entidades.Instalacion;
+import entidades.Turno;
+import entidades.Usuario;
 
 /**
  * TurnoDAO — Acceso a datos de turnos en la base de datos.
@@ -30,15 +36,15 @@ import java.util.Optional;
 public class TurnoDAO implements ITurnoDAO {
 
     private final Conexion conexion = Conexion.getInstancia();
-    private final IUsuarioDAO usuarioDAO;
+    private final IPersonaDAO personaDAO;
     private final IInstalacionDAO instalacionDAO;
 
     /**
      * Constructor que recibe los DAOs para obtener usuarios e instalaciones.
      * Permite reconstruir turnos completos desde la base de datos.
      */
-    public TurnoDAO(IUsuarioDAO usuarioDAO, IInstalacionDAO instalacionDAO) {
-        this.usuarioDAO     = usuarioDAO;
+    public TurnoDAO(IPersonaDAO personaDAO, IInstalacionDAO instalacionDAO) {
+        this.personaDAO     = personaDAO;
         this.instalacionDAO = instalacionDAO;
     }
 
@@ -193,7 +199,7 @@ public class TurnoDAO implements ITurnoDAO {
         Integer carrilAsignado = rs.wasNull() ? null : carril; // NULL en BD → null en Java
 
         // Obtener objetos relacionados usando los DAOs inyectados
-        Usuario usuario = usuarioDAO.buscarPorId(idUsuario)
+        Usuario usuario = personaDAO.buscarPorId(idUsuario)
                 .orElseThrow(() -> new RuntimeException("Usuario id=" + idUsuario + " no encontrado."));
 
         Instalacion instalacion = instalacionDAO.buscarPorId(idInstalacion)

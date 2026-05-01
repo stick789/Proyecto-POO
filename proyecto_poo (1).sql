@@ -114,6 +114,24 @@ CREATE TABLE `piscina` (
 -- --------------------------------------------------------
 
 --
+-- Estructura de tabla para la tabla `rol`
+--
+
+CREATE TABLE `rol` (
+  `id_rol` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre_rol` varchar(50) NOT NULL UNIQUE,
+  `descripcion` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id_rol`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+INSERT INTO `rol` (`nombre_rol`, `descripcion`) VALUES
+('USUARIO', 'Usuario regular del sistema'),
+('ADMINISTRADOR', 'Administrador del sistema'),
+('ENTRENADOR', 'Entrenador del gimnasio o piscina');
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `turno`
 --
 
@@ -138,7 +156,8 @@ CREATE TABLE `usuarios` (
   `id_persona` int(11) NOT NULL,
   `contraseña` varchar(100) NOT NULL,
   `categoria` varchar(1) DEFAULT NULL,
-  `esAfiliado` tinyint(1) NOT NULL
+  `esAfiliado` tinyint(1) NOT NULL,
+  `id_rol` int(11) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -286,7 +305,8 @@ ALTER TABLE `turno`
 -- Filtros para la tabla `usuarios`
 --
 ALTER TABLE `usuarios`
-  ADD CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`id_persona`) REFERENCES `persona` (`id_persona`);
+  ADD CONSTRAINT `usuarios_ibfk_1` FOREIGN KEY (`id_persona`) REFERENCES `persona` (`id_persona`),
+  ADD CONSTRAINT `fk_usuarios_rol` FOREIGN KEY (`id_rol`) REFERENCES `rol` (`id_rol`) ON DELETE RESTRICT;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
