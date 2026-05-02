@@ -1,20 +1,21 @@
 package entidades;
 import java.math.BigDecimal;
-
+import java.time.LocalDateTime;
 public class Pagos extends Historial_citas {
     private Long idPago;
     private BigDecimal monto;
     private String metodoPago;
     private String estadoPago;
-
+    private LocalDateTime fechaPago;
    
 
     public Pagos(Long idPago, BigDecimal monto, String metodoPago, String estadoPago, String idTurno, Integer idUsuario) {
-        super(0, idTurno, null, null, idUsuario, null, "Pago realizado");
+        super(0, idTurno, null, null, idUsuario, null, null);
         this.idPago = idPago;
         this.monto = monto;
         this.metodoPago = metodoPago;
         this.estadoPago = estadoPago;
+        this.fechaPago = LocalDateTime.now();
     }
      public Long getIdPago() {
         return idPago;
@@ -46,6 +47,14 @@ public class Pagos extends Historial_citas {
 
     public void setEstadoPago(String estadoPago) {
         this.estadoPago = estadoPago;
+    }
+
+    public LocalDateTime getFechaPago() {
+        return fechaPago;
+    }
+
+    public void setFechaPago(LocalDateTime fechaPago) {
+        this.fechaPago = fechaPago;
     }
     
 }
