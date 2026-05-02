@@ -11,3 +11,4 @@
 >Terminar la parte de logica de negocio 
 >Agragar Pagos en la base de datos, en el DAO y en negocio
 >Corregir logica del Gestor de Citas ☑️
+>Agregar Entrenador y a la base de datos, también agregar el atributo del mismo dentro de Turno 
