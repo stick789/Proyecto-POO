@@ -114,8 +114,7 @@ CREATE TABLE `turno` (
   `estado` varchar(20) DEFAULT 'RESERVADO',
   PRIMARY KEY (`idTurno`),
   CONSTRAINT `fk_turno_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`idusuario`) ON DELETE CASCADE,
-  CONSTRAINT `fk_turno_instalacion` FOREIGN KEY (`id_instalacion`) REFERENCES `instalacion` (`idInstalacion`) ON DELETE CASCADE,
-  CONSTRAINT `fk_turno_entrenador` FOREIGN KEY (`id_entrenador`) REFERENCES `entrenador` (`idEntrenador`) ON DELETE SET NULL
+  CONSTRAINT `fk_turno_instalacion` FOREIGN KEY (`id_instalacion`) REFERENCES `instalacion` (`idInstalacion`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `historial_citas` (
