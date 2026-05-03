@@ -7,8 +7,8 @@
 -  Agregar entidad entrenador, corregir ciertos aspectos de la logica del codigo
 >[!NOTE]
 >Agregar la entidad entrenador no como una persona que puede ingresar al sistema, sino que, por el momento, unicamente con los metodos correspondientes para que pueda ser asignado a turnos de piscina o gimnasio para.☑️
->Corregir en el paquete DAO, debido a que la clase padre es Perosna.☑️
->Terminar la parte de logica de negocio 
->Agragar Pagos en la base de datos, en el DAO y en negocio
+>Corregir en el paquete DAO, debido a que la clase padre es Persona.☑️
+>Terminar la parte de logica de negocio ☑️
+>Agregar Pagos en la base de datos☑️, en el DAO y en negocio
 >Corregir logica del Gestor de Citas ☑️
 >Agregar Entrenador y a la base de datos, también agregar el atributo del mismo dentro de Turno ☑️
