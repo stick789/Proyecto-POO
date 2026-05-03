@@ -6,49 +6,67 @@ import java.util.Optional;
 import entidades.Turno;
 
 /**
- * Contrato para acceder a los datos de turnos.
- * Define las operaciones que se pueden realizar: crear, buscar, listar, actualizar y eliminar turnos.
+ * ITurnoDAO — Contrato de acceso a datos para turnos.
+ *
+ * <p><b>Cambios respecto a la versión anterior:</b></p>
+ * <ul>
+ *   <li>Se añade {@link #listarTodos()} para consultas administrativas.</li>
+ *   <li>{@link #actualizarEntrenador(int, Integer)} ya existía; se documenta
+ *       que acepta {@code null} para desasignar un entrenador.</li>
+ * </ul>
  */
 public interface ITurnoDAO {
- 
+
     /**
      * Crea un nuevo turno en la base de datos.
-     * Asigna un ID al turno creado.
+     * Asigna el ID generado al objeto turno.
      */
     void insertar(Turno turno);
- 
+
     /**
-     * Busca un turno por su identificador.
+     * Busca un turno por su ID.
      */
     Optional<Turno> buscarPorId(int id);
 
     /**
-     * Obtiene todos los turnos de un usuario.
+     * Lista todos los turnos de un usuario, ordenados por fecha descendente.
      */
     List<Turno> listarPorUsuario(int idUsuario);
- 
+
     /**
-     * Obtiene todos los turnos de una instalación.
+     * Lista todos los turnos de una instalación.
      */
     List<Turno> listarPorInstalacion(int idInstalacion);
- 
+
     /**
-     * Obtiene solo los turnos reservados de una instalación.
+     * Lista solo los turnos en estado RESERVADO de una instalación.
      */
     List<Turno> listarReservadosPorInstalacion(int idInstalacion);
- 
+
     /**
-     * Cambia el estado de un turno (RESERVADO, CANCELADO, COMPLETADO).
+     * Lista todos los turnos del sistema (para vistas de administrador).
+     * Ordenados por fecha descendente.
+     */
+    List<Turno> listarTodos();
+
+    /**
+     * Actualiza el estado de un turno.
+     *
+     * @param idTurno    ID del turno.
+     * @param nuevoEstado uno de: {@code RESERVADO}, {@code CANCELADO}, {@code COMPLETADO}.
      */
     void actualizarEstado(int idTurno, String nuevoEstado);
+
     /**
-     * Actualiza el id del entrenador asociado a un turno.
-     * Puede ser null si no hay entrenador asignado.
+     * Actualiza el entrenador asociado a un turno.
+     *
+     * @param idTurno     ID del turno.
+     * @param idEntrenador ID del entrenador, o {@code null} para desasignar.
      */
     void actualizarEntrenador(int idTurno, Integer idEntrenador);
- 
+
     /**
-     * Borra un turno de la base de datos.
+     * Elimina físicamente un turno de la base de datos.
      */
     void eliminar(int id);
 }
