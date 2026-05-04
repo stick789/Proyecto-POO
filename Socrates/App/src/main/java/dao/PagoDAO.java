@@ -8,8 +8,6 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import database.Conexion;
 import entidades.Pago;
@@ -31,7 +29,6 @@ import entidades.Pago;
  */
 public class PagoDAO implements IPagoDAO {
 
-    private static final Logger LOGGER = Logger.getLogger(PagoDAO.class.getName());
     private final Conexion conexion = Conexion.getInstancia();
 
     // ── SQL (columnas en camelCase tal como define el SQL) ────────────────────

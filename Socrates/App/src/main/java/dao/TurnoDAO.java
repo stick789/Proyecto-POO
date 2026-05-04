@@ -11,11 +11,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import database.Conexion;
-import entidades.Entrenador;
 import entidades.Instalacion;
 import entidades.Turno;
 import entidades.Usuario;
@@ -37,8 +34,6 @@ import entidades.Usuario;
  * numero_carril_asignado (nullable), estado, id_entrenador (nullable)</p>
  */
 public class TurnoDAO implements ITurnoDAO {
-
-    private static final Logger LOGGER = Logger.getLogger(TurnoDAO.class.getName());
 
     private final Conexion        conexion = Conexion.getInstancia();
     private final IPersonaDAO     personaDAO;
