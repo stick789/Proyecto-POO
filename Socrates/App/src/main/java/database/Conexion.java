@@ -11,29 +11,19 @@ import java.util.logging.Logger;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ButtonType;
 
 /**
  * Conexion — Gestiona la conexión a la base de datos con patrón Singleton.
  *
- * CÓMO FUNCIONA:
- *   • conectar(): Abre una conexión a MySQL o reutiliza la existente si ya está abierta.
- *   • desconectar(): Cierra la conexión y marca que debe reabrirse en la próxima llamada.
- *   • getInstancia(): Garantiza que solo existe una instancia de esta clase en toda la aplicación.
+ * FLUJO DE ARRANQUE (conectarConFeedback):
+ *   - Éxito → Alert INFO "Establecimiento de Conexión: Satisfactorio" → continúa.
+ *   - Fallo  → Alert ERROR con detalle técnico + botón Cerrar → lanza RuntimeException
+ *              para que App.java llame Platform.exit() y cierre la aplicación.
  *
- * PROBLEMA QUE SE SOLUCIONÓ:
- *   Antes, cada vez que los DAOs llamaban a conectar() y luego desconectar(), se abría
- *   una nueva conexión pero la anterior quedaba "colgada" en memoria. Esto causaba que
- *   MySQL rechazara las conexiones con "Too many connections" después de varios accesos.
- *
- * LA SOLUCIÓN:
- *   • conectar() ahora verifica si ya hay una conexión activa. Si existe y está abierta,
- *     la reutiliza. Si no, abre una nueva.
- *   • desconectar() cierra la conexión y limpia la referencia (asigna null).
- *   • Los mensajes de error ahora muestran más detalles para diagnosticar problemas rápidamente.
- *
- * RESULTADO:
- *   Una sola conexión se mantiene durante toda la sesión del usuario,
- *   evitando fugas de memoria y errores de conexión.
+ * FLUJO EN DAOs (conectar):
+ *   - Reutiliza la conexión existente si está activa.
+ *   - Si no, la reabre silenciosamente (la pantalla ya está cargada).
  */
 public class Conexion {
 
@@ -46,12 +36,10 @@ public class Conexion {
     private final String password;
 
     private Connection cadena;
-    private boolean mensajeExitoMostrado;
     private static Conexion instancia;
 
     private Conexion() {
         Properties props = new Properties();
-
         try (InputStream in = cargarConfigBd()) {
             if (in != null) {
                 props.load(in);
@@ -68,83 +56,90 @@ public class Conexion {
         this.user     = props.getProperty("db.user",     "root");
         this.password = props.getProperty("db.password", "");
         this.cadena   = null;
-        this.mensajeExitoMostrado = false;
     }
 
+    // ── Carga db.properties por tres rutas distintas ──────────────────────────
     private InputStream cargarConfigBd() {
         InputStream in = null;
-
-        // Intento 1: JPMS Module API
         try {
             in = Conexion.class.getModule().getResourceAsStream("properties/db.properties");
         } catch (IOException e) {
             LOG.log(Level.FINE, "Intento 1 fallo (Module API)", e);
         }
-
-        // Intento 2: classpath absoluto
-        if (in == null) {
-            in = Conexion.class.getResourceAsStream("/properties/db.properties");
-        }
-
-        // Intento 3: classloader relativo
-        if (in == null) {
-            in = getClass().getClassLoader().getResourceAsStream("properties/db.properties");
-        }
-
-        if (in == null) {
-            LOG.warning("db.properties no encontrado por ninguna ruta. Usando valores por defecto.");
-        }
-
+        if (in == null) in = Conexion.class.getResourceAsStream("/properties/db.properties");
+        if (in == null) in = getClass().getClassLoader().getResourceAsStream("properties/db.properties");
+        if (in == null) LOG.warning("db.properties no encontrado por ninguna ruta.");
         return in;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
     /**
-     * Obtiene la conexión a la base de datos.
+     * Llamado por App.java al arrancar.
      *
-     * Si ya hay una conexión activa, la devuelve tal cual.
-     * Si no existe o está cerrada, abre una nueva.
-     * Esto evita crear múltiples conexiones innecesarias.
+     * • Éxito → muestra Alert "Establecimiento de Conexión: Satisfactorio".
+     * • Fallo → muestra Alert de error con detalle → lanza RuntimeException
+     *           para que App.java cierre la aplicación.
      */
-    public Connection conectar() {
+    public void conectarConFeedback() {
         try {
-            // Verifica si la conexión ya existe y está activa
             if (cadena == null || cadena.isClosed()) {
                 Class.forName(driver);
                 cadena = DriverManager.getConnection(url + db, user, password);
-
-                if (!mensajeExitoMostrado) {
-                    Alert alert = new Alert(AlertType.INFORMATION);
-                    alert.setTitle("Conexion exitosa");
-                    alert.setHeaderText(null);
-                    alert.setContentText("Conectado correctamente a: " + db);
-                    alert.showAndWait();
-                    mensajeExitoMostrado = true;
-                }
             }
+
+            // ── Conexión exitosa ──
+            Alert ok = new Alert(AlertType.INFORMATION);
+            ok.setTitle("Conexión establecida");
+            ok.setHeaderText("Establecimiento de Conexión: Satisfactorio");
+            ok.setContentText("Conectado a: " + url + db + "\nUsuario: " + user);
+            ok.showAndWait();
+
         } catch (ClassNotFoundException e) {
             LOG.log(Level.SEVERE, "Driver JDBC no encontrado", e);
-            mostrarErrorConexion("Driver no encontrado: " + driver +
-                                 "\nVerifica que mysql-connector-j este en el pom.xml");
+            mostrarErrorYCerrar(
+                "Driver JDBC no encontrado: " + driver +
+                "\nVerifica que mysql-connector-j esté en el pom.xml.",
+                e.getMessage()
+            );
         } catch (SQLException e) {
             LOG.log(Level.SEVERE, "Error SQL al conectar", e);
-            // Muestra un mensaje con información detallada del error para facilitar la solución
-            mostrarErrorConexion(
+            mostrarErrorYCerrar(
                 "No se pudo conectar a: " + url + db +
                 "\nUsuario: " + user +
-                "\nVerifica que MySQL este corriendo y que db.properties sea correcto." +
-                "\n\nDetalle: " + e.getMessage()
+                "\nVerifica que MySQL esté corriendo y que db.properties sea correcto.",
+                e.getMessage()
             );
+        }
+    }
+
+    // ── Muestra el Alert de error con header + detalle técnico y lanza excepción ──
+    private void mostrarErrorYCerrar(String descripcion, String detalleTecnico) {
+        Alert error = new Alert(AlertType.ERROR, "", ButtonType.CLOSE);
+        error.setTitle("Error de conexión");
+        error.setHeaderText("No se pudo conectar a la base de datos");
+        error.setContentText(descripcion + "\n\nDetalle: " + detalleTecnico);
+        error.showAndWait();
+        throw new RuntimeException("Fallo de conexión a BD — app cerrada.");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    /**
+     * Usado por los DAOs durante la sesión.
+     * Reutiliza la conexión activa o la reabre si fue cerrada.
+     * No muestra alertas (la pantalla ya está en uso).
+     */
+    public Connection conectar() {
+        try {
+            if (cadena == null || cadena.isClosed()) {
+                Class.forName(driver);
+                cadena = DriverManager.getConnection(url + db, user, password);
+            }
+        } catch (ClassNotFoundException | SQLException e) {
+            LOG.log(Level.SEVERE, "Error al reconectar en DAO", e);
         }
         return cadena;
     }
 
-    /**
-     * Cierra la conexión a la base de datos.
-     *
-     * Después de cerrar, asigna null a la referencia de conexión para que
-     * conectar() sepa que debe abrir una nueva en la próxima llamada.
-     * Esto previene errores al intentar usar una conexión ya cerrada.
-     */
     public void desconectar() {
         try {
             if (cadena != null && !cadena.isClosed()) {
@@ -153,16 +148,8 @@ public class Conexion {
         } catch (SQLException e) {
             LOG.log(Level.WARNING, "Error al desconectar", e);
         } finally {
-            cadena = null; // Indica que la conexión fue cerrada, para reabrir si es necesario
+            cadena = null;
         }
-    }
-
-    private void mostrarErrorConexion(String detalle) {
-        Alert alert = new Alert(AlertType.ERROR);
-        alert.setTitle("Error de conexión");
-        alert.setHeaderText("No se pudo conectar a la base de datos");
-        alert.setContentText(detalle);
-        alert.showAndWait();
     }
 
     public synchronized static Conexion getInstancia() {
