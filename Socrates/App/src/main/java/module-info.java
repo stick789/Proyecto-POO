@@ -1,15 +1,17 @@
 module socratesGui {
-    // Módulos de Java que se necesitan
+
+    // ── Dependencias directas ────────────────────────────────────────────────
     requires javafx.controls;
     requires javafx.fxml;
     requires java.logging;
-    requires java.sql;
     requires mysql.connector.j;
 
-    // Abre socratesGui a JavaFX para que pueda leer los FXML por reflexión
-    opens socratesGui to javafx.fxml;
+    // requires transitive: tipos de estos módulos aparecen en la API pública
+    // de clases exportadas (Connection en Conexion.java, Stage en App.java)
+    requires transitive java.sql;
+    requires transitive javafx.graphics; // Stage, Scene, Parent
 
-    // Exporta todos los paquetes del proyecto para que JPMS los reconozca
+    // ── Exports: paquetes visibles para otros módulos ────────────────────────
     exports socratesGui;
     exports entidades;
     exports database;
@@ -17,10 +19,11 @@ module socratesGui {
     exports LogicaCita;
     exports negocio;
 
-    // Abre 'database' para que el classloader pueda leer db.properties
-    // dentro del módulo usando getModule().getResourceAsStream()
-    opens database;
+    // ── Opens: reflexión para JavaFX FXML y DAO ──────────────────────────────
+    opens socratesGui  to javafx.fxml;   // FXMLLoader necesita reflexión sobre los controladores
     opens entidades;
+    opens database;                      // classloader puede leer db.properties dentro del módulo
     opens dao;
     opens LogicaCita;
+    opens negocio;
 }
