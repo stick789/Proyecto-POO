@@ -12,6 +12,7 @@
 >Agregar Pagos en la base de datos☑️, en el DAO y en negocio
 >Corregir logica del Gestor de Citas ☑️
 >Agregar Entrenador y a la base de datos, también agregar el atributo del mismo dentro de Turno ☑️
+#Terminado
 [!NOTE]
 >Se termino de agregar lo faltante, se separaron entrenadores de usuarios y administradores, se aplico el cifrado SHA256 para las contraseña ademas de rellenar el espacio tipo blank del SecondaryView.
 [!IMPORTANT]
