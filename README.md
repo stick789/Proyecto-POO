@@ -18,7 +18,7 @@
 > [!NOTE]
 > Se terminó de agregar lo faltante, se separaron entrenadores de usuarios y administradores, se aplicó el cifrado SHA256 para las contraseñas además de rellenar el espacio tipo blank del SecondaryView.
 
-> [!CAUTION]
+> [!IMPORTANT]
 > Revisar la especialización a futuro para entrenadores logrando así su uso según la disponibilidad de la instalación sin necesidad de que estos lleguen a quedar bloqueados en una sola área.
 >
 > Asignar ID a las instalaciones para el uso de los entrenadores.
