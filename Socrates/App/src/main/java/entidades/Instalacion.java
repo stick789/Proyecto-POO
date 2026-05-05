@@ -7,6 +7,7 @@ public abstract class Instalacion {
     private String tipo; // "Piscina" o "Gimnasio"
     private int capacidadMaxima;
     private int aforoActual;
+    private String nombre;
     private final List<Turno> turnos = new ArrayList<>(); // Lista de turnos asociados a esta instalación
 
     public Instalacion() {
