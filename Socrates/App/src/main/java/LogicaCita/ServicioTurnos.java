@@ -17,13 +17,12 @@ import negocio.PersonaControl;
 /**
  * ServicioTurnos — Gestiona operaciones de reserva, cancelación, completación y reagendamiento de turnos.
  *
- * Funcionalidades principales:
- *   - Reservar turnos validando disponibilidad y aforo
- *   - Cancelar turnos aplicando políticas de cancelación
- *   - Completar turnos marcándolos como finalizados
- *   - Reagendar turnos a nuevas fechas con registro de historial
- *   - Asignar carriles automáticamente en piscinas
- *   - Mantener registro de cambios en el historial de citas
+ * CORRECCIONES aplicadas respecto a la versión anterior:
+ *   - Eliminados Integer.parseInt() sobre getIdTurno() y getIdInstalacion() (ya son int).
+ *   - Eliminada String temporal idTurnoTemp: Turno ahora recibe int 0 como id temporal.
+ *   - Eliminada instalacion.getTurnos().add(): getTurnos() fue removido de Instalacion.
+ *   - Corregido .equals() sobre int primitivo → operador ==.
+ *   - contarReservasActivasEnCarril: usa turnoDAO en vez de piscina.getTurnos() (eliminado).
  */
 public class ServicioTurnos {
 
@@ -36,7 +35,7 @@ public class ServicioTurnos {
     private final PoliticaCancelacion politica;
     private final PersonaControl      personaControl;
 
-    // Constructores
+    // ── Constructores ─────────────────────────────────────────────────────────
 
     public ServicioTurnos(ITurnoDAO turnoDAO,
                           IHistorialCitasDAO historialDAO,
@@ -59,15 +58,11 @@ public class ServicioTurnos {
         this.politica       = politica;
         this.personaControl = new PersonaControl();
     }
-//====================
-// Operación Reservar 
-//====================
-    /**
-     * Reserva un turno asignando automáticamente un carril si es una piscina.
-     * Registra el evento en el historial de citas.
-     */
-    //  Métodos que aceptan el actor (Persona) y validan permisos por rol
-        
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Operación: Reservar
+    // ══════════════════════════════════════════════════════════════════════════
+
     public Turno reservarTurno(LocalDateTime fechaHora, int duracionMinutos,
                                Usuario usuario, Instalacion instalacion,
                                Integer numeroCarril, Persona actor) {
@@ -75,13 +70,11 @@ public class ServicioTurnos {
 
         boolean esAdmin = personaControl.esAdministrador(actor);
 
-        // Si no es admin, solo puede reservar para si mismo
         if (!esAdmin) {
             if (!(actor instanceof Usuario) || ((Usuario) actor).getId() != usuario.getId()) {
                 throw new IllegalAccessError("Solo el propio usuario puede reservar su turno.");
             }
         }
-       // Validar permisos de operación para el actor
         personaControl.validarOperacion(actor, PersonaControl.OperacionPersona.AGENDAR_CITA);
 
         Integer carrilFinal = numeroCarril;
@@ -89,17 +82,15 @@ public class ServicioTurnos {
             carrilFinal = asignarCarrilAutomatico((Piscina) instalacion);
         }
 
-        // Realiza la reserva interna y registra en historial
         Turno turno = reservarTurnoInterno(fechaHora, duracionMinutos, usuario, instalacion, carrilFinal);
         historialDAO.insertar(HistorialCitasServicio.desdeTurno(turno, "Turno reservado."));
         return turno;
     }
-   
 
     /**
-     * Crea y persiste un turno en la base de datos.
-     * Valida disponibilidad, descuenta cupo y actualiza aforo.
-     * No registra en historial para permitir control granular desde operaciones de nivel superior.
+     * Crea y persiste un turno.
+     * Se pasa 0 como id temporal; turnoDAO.insertar() lo reemplaza con el INT real de la BD.
+     * No se llama instalacion.getTurnos() porque esa lista fue eliminada de Instalacion.
      */
     private Turno reservarTurnoInterno(LocalDateTime fechaHora, int duracionMinutos,
                                        Usuario usuario, Instalacion instalacion,
@@ -110,70 +101,57 @@ public class ServicioTurnos {
                 .filter(t -> Turno.ESTADO_RESERVADO.equals(t.getEstado()))
                 .collect(Collectors.toList());
 
-        List<Turno> reservasActivasInstalacion = turnoDAO
-            .listarReservadosPorInstalacion(Integer.parseInt(instalacion.getIdInstalacion()));
+        // getIdInstalacion() ya devuelve int — sin parseInt()
+        List<Turno> reservasActivasInstalacion =
+            turnoDAO.listarReservadosPorInstalacion(instalacion.getIdInstalacion());
 
-        // Valida reglas de negocio para la reserva, incluyendo disponibilidad y solapamientos
         validador.validarReserva(instalacion, fechaHora, duracionMinutos,
             turnosActivosUsuario, reservasActivasInstalacion);
-        // Valida carril y disponibilidad para piscinas, o asegura que no se asignen carriles a instalaciones que no son piscinas
+
         Integer carrilValidado = validarCarril(instalacion, numeroCarril);
         instalacion.descontarCupo();
 
-        // idTurno temporal — turnoDAO.insertar() lo reemplaza con el INT real de la BD
-        String idTurnoTemp = "TMP-" + System.currentTimeMillis();
-        Turno turno = new Turno(idTurnoTemp, fechaHora, duracionMinutos, usuario, instalacion);
+        // id temporal 0 — turnoDAO.insertar() asigna el id real de la BD
+        Turno turno = new Turno(0, fechaHora, duracionMinutos, usuario, instalacion);
         turno.setNumeroCarrilAsignado(carrilValidado);
-        instalacion.getTurnos().add(turno);
+        // instalacion.getTurnos().add(turno)  ← ELIMINADO: getTurnos() fue removido de Instalacion
 
-        turnoDAO.insertar(turno);         // actualiza turno.idTurno con el INT de la BD
+        turnoDAO.insertar(turno);
         actualizarAforoBD(instalacion);
 
         return turno;
     }
 
-    //====================
-    // Operación Cancelar 
-    //====================
+    // ══════════════════════════════════════════════════════════════════════════
+    // Operación: Cancelar
+    // ══════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Cancela un turno validando políticas de cancelación.
-     * Libera el cupo, actualiza aforo y registra en historial.
-     *
-     * @param turno           turno a cancelar
-     * @param esAdministrador si true, aplica políticas de administrador
-     */
     private void cancelarTurnoInterno(Turno turno, boolean esAdministrador) {
         if (turno == null) throw new IllegalArgumentException("El turno no puede ser null.");
 
-        // Valida cancelación aplicando políticas según privilegios
         if (esAdministrador) {
             if (!politica.puedeCancelarComoAdmin(turno, true)) {
                 throw new IllegalStateException(politica.motivoCancelacionBloqueada(turno));
             }
         } else {
-            politica.validarCancelacion(turno); // lanza excepción si no se puede cancelar
+            politica.validarCancelacion(turno);
         }
 
         turno.setEstado(Turno.ESTADO_CANCELADO);
         turno.getInstalacion().liberarCupo();
 
-        turnoDAO.actualizarEstado(Integer.parseInt(turno.getIdTurno()), Turno.ESTADO_CANCELADO);
+        // getIdTurno() ya devuelve int — sin parseInt()
+        turnoDAO.actualizarEstado(turno.getIdTurno(), Turno.ESTADO_CANCELADO);
         actualizarAforoBD(turno.getInstalacion());
         historialDAO.insertar(HistorialCitasServicio.desdeTurno(turno, "Turno cancelado."));
     }
 
-
-    /**
-     * Cancela un turno verificando permisos del  administrador.
-     */
     public void cancelarTurno(Turno turno, Persona actor) {
         if (actor == null) throw new IllegalArgumentException("El actor no puede ser null.");
 
         boolean esAdmin = personaControl.esAdministrador(actor);
 
         if (!esAdmin) {
-            // debe ser el propietario
             if (!(actor instanceof Usuario) || ((Usuario) actor).getId() != turno.getUsuario().getId()) {
                 throw new IllegalAccessError("Solo el dueño del turno o un administrador puede cancelarlo.");
             }
@@ -183,7 +161,9 @@ public class ServicioTurnos {
         cancelarTurnoInterno(turno, esAdmin);
     }
 
-    //Operación Completar
+    // ══════════════════════════════════════════════════════════════════════════
+    // Operación: Completar
+    // ══════════════════════════════════════════════════════════════════════════
 
     private void completarTurnoInterno(Turno turno) {
         if (turno == null) throw new IllegalArgumentException("El turno no puede ser null.");
@@ -194,33 +174,25 @@ public class ServicioTurnos {
         turno.setEstado(Turno.ESTADO_COMPLETADO);
         turno.getInstalacion().liberarCupo();
 
-        turnoDAO.actualizarEstado(Integer.parseInt(turno.getIdTurno()), Turno.ESTADO_COMPLETADO);
+        // getIdTurno() ya devuelve int — sin parseInt()
+        turnoDAO.actualizarEstado(turno.getIdTurno(), Turno.ESTADO_COMPLETADO);
         actualizarAforoBD(turno.getInstalacion());
         historialDAO.insertar(HistorialCitasServicio.desdeTurno(turno, "Turno completado."));
     }
 
-    /**
-     * Completa un turno verificando permisos del actor (solo administrador puede completar).
-     */
     public void completarTurno(Turno turno, Persona actor) {
         if (actor == null) throw new IllegalArgumentException("El actor no puede ser null.");
-        
         personaControl.validarOperacion(actor, PersonaControl.OperacionPersona.ADMINISTRAR_HISTORIAL);
-        
         completarTurnoInterno(turno);
     }
-    //====================
-    //Operación Reagendar
-    //====================
-    /**
-     * Reagenda un turno existente a una nueva fecha y hora.
-     * Valida la cancelación del turno original y crea uno nuevo.
-     * Mantiene registro detallado en el historial de ambas operaciones.
-     * Solo calcula el carril automáticamente si la nueva fecha es diferente.
-     */
+
+    // ══════════════════════════════════════════════════════════════════════════
+    // Operación: Reagendar
+    // ══════════════════════════════════════════════════════════════════════════
+
     private Turno reagendarTurnoInterno(Turno turnoExistente,
-                                LocalDateTime nuevaFechaHora,
-                                boolean esAdministrador) {
+                                        LocalDateTime nuevaFechaHora,
+                                        boolean esAdministrador) {
         if (turnoExistente == null) throw new IllegalArgumentException("El turno no puede ser null.");
         if (nuevaFechaHora == null) throw new IllegalArgumentException("La nueva fecha no puede ser null.");
 
@@ -234,9 +206,10 @@ public class ServicioTurnos {
         Usuario usuario         = turnoExistente.getUsuario();
         int duracion            = turnoExistente.getDuracionMinutos();
 
+        // getIdTurno() ya devuelve int — comparación con == en vez de .equals()
         List<Turno> otrosTurnos = turnoDAO.listarPorUsuario(usuario.getId()).stream()
                 .filter(t -> Turno.ESTADO_RESERVADO.equals(t.getEstado())
-                          && !t.getIdTurno().equals(turnoExistente.getIdTurno()))
+                          && t.getIdTurno() != turnoExistente.getIdTurno())
                 .collect(Collectors.toList());
 
         validador.validarFechaFutura(nuevaFechaHora);
@@ -244,22 +217,21 @@ public class ServicioTurnos {
 
         String detalle = "Reagendado desde " + turnoExistente.getFechaHora() + " hacia " + nuevaFechaHora;
 
-        // Cancela el turno original y actualiza base de datos
         turnoExistente.setEstado(Turno.ESTADO_CANCELADO);
         instalacion.liberarCupo();
-        turnoDAO.actualizarEstado(Integer.parseInt(turnoExistente.getIdTurno()), Turno.ESTADO_CANCELADO);
+
+        // getIdTurno() ya devuelve int — sin parseInt()
+        turnoDAO.actualizarEstado(turnoExistente.getIdTurno(), Turno.ESTADO_CANCELADO);
         actualizarAforoBD(instalacion);
         historialDAO.insertar(
             HistorialCitasServicio.desdeTurno(turnoExistente, "Reagendado — turno original cancelado. " + detalle)
         );
 
-        // Crea el nuevo turno con validaciones
         Turno nuevoTurno = reservarTurnoInterno(
             nuevaFechaHora, duracion, usuario, instalacion,
             turnoExistente.getNumeroCarrilAsignado()
         );
 
-        // Registra el nuevo turno en el historial
         historialDAO.insertar(
             HistorialCitasServicio.desdeTurno(nuevoTurno, "Reagendado — nuevo turno creado. " + detalle)
         );
@@ -267,14 +239,11 @@ public class ServicioTurnos {
         return nuevoTurno;
     }
 
-    /**
-     * Reagenda un turno verificando permisos del  administrador).
-     */
     public Turno reagendarTurno(Turno turnoExistente, LocalDateTime nuevaFechaHora, Persona actor) {
         if (actor == null) throw new IllegalArgumentException("El actor no puede ser null.");
 
         boolean esAdmin = personaControl.esAdministrador(actor);
-// Solo el propietario o un admin pueden reagendar
+
         if (!esAdmin) {
             if (!(actor instanceof Usuario) || ((Usuario) actor).getId() != turnoExistente.getUsuario().getId()) {
                 throw new IllegalAccessError("Solo el dueño del turno o un administrador puede reagendarlo.");
@@ -285,15 +254,15 @@ public class ServicioTurnos {
         return reagendarTurnoInterno(turnoExistente, nuevaFechaHora, esAdmin);
     }
 
-    // Métodos auxiliares privados 
+    // ══════════════════════════════════════════════════════════════════════════
+    // Métodos auxiliares privados
+    // ══════════════════════════════════════════════════════════════════════════
+
     private void actualizarAforoBD(Instalacion instalacion) {
-        // Actualiza el aforo en BD con el valor actual (ya modificado por descontarCupo/liberarCupo)
-        instalacionDAO.actualizarAforo(
-                Integer.parseInt(instalacion.getIdInstalacion()),
-                instalacion.getAforoActual()
-        );
+        // getIdInstalacion() ya devuelve int — sin parseInt()
+        instalacionDAO.actualizarAforo(instalacion.getIdInstalacion(), instalacion.getAforoActual());
     }
-//Valida carril para piscinas y asegura que no se asignen carriles a instalaciones que no son piscinas
+
     private Integer validarCarril(Instalacion instalacion, Integer numeroCarril) {
         if (instalacion instanceof Piscina) {
             Piscina piscina = (Piscina) instalacion;
@@ -302,7 +271,8 @@ public class ServicioTurnos {
             if (numeroCarril <= 0 || numeroCarril > piscina.getNumeroCarriles())
                 throw new IllegalArgumentException("Carril invalido. Rango: 1 a " + piscina.getNumeroCarriles());
             if (contarReservasActivasEnCarril(piscina, numeroCarril) >= maxPersonasPorCarril)
-                throw new IllegalStateException("El carril " + numeroCarril + " ya alcanzo el maximo de " + maxPersonasPorCarril + " personas.");
+                throw new IllegalStateException(
+                    "El carril " + numeroCarril + " ya alcanzo el maximo de " + maxPersonasPorCarril + " personas.");
             return numeroCarril;
         }
         if (numeroCarril != null)
@@ -319,20 +289,26 @@ public class ServicioTurnos {
         throw new IllegalStateException("No hay carriles disponibles.");
     }
 
+    /**
+     * Cuenta reservas activas en un carril consultando la BD vía turnoDAO.
+     * piscina.getTurnos() fue eliminado de Instalacion — se usa el DAO directamente.
+     */
     private int contarReservasActivasEnCarril(Piscina piscina, int numeroCarril) {
-        int reservas = 0;
-        for (Turno t : piscina.getTurnos()) {
+        // getIdInstalacion() ya devuelve int — sin parseInt()
+        List<Turno> reservas = turnoDAO.listarReservadosPorInstalacion(piscina.getIdInstalacion());
+        int count = 0;
+        for (Turno t : reservas) {
             Integer c = t.getNumeroCarrilAsignado();
-            if (c != null && c == numeroCarril && Turno.ESTADO_RESERVADO.equals(t.getEstado())) reservas++;
+            if (c != null && c == numeroCarril) count++;
         }
-        return reservas;
+        return count;
     }
 
     private int validarMax(int max) {
         if (max <= 0) throw new IllegalArgumentException("El maximo de personas por carril debe ser mayor a 0.");
         return max;
     }
-  
+
     public int getMaxPersonasPorCarril() { return maxPersonasPorCarril; }
     public void setMaxPersonasPorCarril(int max) { this.maxPersonasPorCarril = validarMax(max); }
 }
