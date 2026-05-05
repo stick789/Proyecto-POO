@@ -1,25 +1,25 @@
 package entidades;
 
+/**
+ * Gimnasio — Subclase concreta de Instalacion.
+ *
+ * CORRECCIÓN: constructor actualizado de String a int para idInstalacion,
+ * siguiendo la corrección de la clase padre Instalacion.
+ */
 public class Gimnasio extends Instalacion {
-// Constructor sin parámetros para facilitar la creación de objetos Gimnasio sin necesidad de proporcionar todos los detalles de inmediato
+
     public Gimnasio() {
         super();
     }
 
-    public Gimnasio(String idInstalacion, String tipo, int capacidadMaxima, int aforoActual) {
-        super(idInstalacion, tipo, capacidadMaxima, aforoActual);// Llamada al constructor de la clase padre (instalacion)
+    public Gimnasio(int idInstalacion, String tipo, int capacidadMaxima, int aforoActual) {
+        super(idInstalacion, tipo, capacidadMaxima, aforoActual);
     }
 
-    // Método para calcular el aforo actual específico para el gimnasio
     @Override
-    public int calcularAforoActual(){
-        return getAforoActual();
-    }
-
- @Override
-public String toString() {
-        return "Instalacion: " + getTipo() + 
-               " | Capacidad Maxima: " + getCapacidadMaxima() + 
+    public String toString() {
+        return "Instalacion: " + getTipo() +
+               " | Capacidad Máxima: " + getCapacidadMaxima() +
                " | Aforo Actual: " + getAforoActual();
     }
 }

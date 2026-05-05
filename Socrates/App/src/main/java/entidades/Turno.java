@@ -1,94 +1,99 @@
 package entidades;
+
 import java.time.LocalDateTime;
 
+/**
+ * Turno — Reserva de un usuario en una instalación.
+ *
+ * CORRECCIÓN: idTurno cambiado de String a int.
+ *   ANTES: private String idTurno;
+ *          El DAO hacía setIdTurno(String.valueOf(keys.getInt(1))) y
+ *          ServicioAsignarEntrenador hacía Integer.parseInt(turno.getIdTurno()),
+ *          lo que era una conversión int→String→int innecesaria y frágil.
+ *   AHORA: private int idTurno;
+ *          Consistente con la BD (idTurno INT AUTO_INCREMENT). Todos los
+ *          DAOs y servicios que usaban parseInt() ahora usan el int directamente.
+ */
 public class Turno {
-// Definición de constantes para los estados permitidos del turno
-    public static final String ESTADO_RESERVADO = "RESERVADO";
-    public static final String ESTADO_CANCELADO = "CANCELADO";
+
+    public static final String ESTADO_RESERVADO  = "RESERVADO";
+    public static final String ESTADO_CANCELADO  = "CANCELADO";
     public static final String ESTADO_COMPLETADO = "COMPLETADO";
-    
-    private String idTurno;
-    private LocalDateTime fechaHora;        // Fecha y hora exacta del turno
-    private int duracionMinutos;
-    private Usuario usuario;                // Usuario que reservó el turno
-    private Instalacion instalacion;        // Piscina o Gimnasio
-    private Integer numeroCarrilAsignado;   // Solo aplica para turnos de piscina
-    private String estado;                  // "Reservado", "Cancelado", "Completado"
-    private Persona entrenador;
+
+    private int           idTurno;                 // ← corregido: int (era String)
+    private LocalDateTime fechaHora;
+    private int           duracionMinutos;
+    private Usuario       usuario;
+    private Instalacion   instalacion;
+    private Integer       numeroCarrilAsignado;    // null para gimnasios
+    private String        estado;
+    private Persona       entrenador;              // Persona (puede ser Entrenador)
 
     public Turno() {
         this.estado = ESTADO_RESERVADO;
     }
 
-    // Constructor
-    public Turno(String idTurno, LocalDateTime fechaHora, int duracionMinutos, 
+    public Turno(int idTurno, LocalDateTime fechaHora, int duracionMinutos,
                  Usuario usuario, Instalacion instalacion) {
-        
-        this.idTurno = idTurno;
-        this.fechaHora = fechaHora;
+        if (instalacion == null)
+            throw new IllegalArgumentException("La instalación no puede ser null.");
+        this.idTurno         = idTurno;
+        this.fechaHora       = fechaHora;
         this.duracionMinutos = duracionMinutos;
-        this.usuario = usuario;
-        if (instalacion == null) {
-            throw new IllegalArgumentException("La instalacion no puede ser null.");
-        }
-        this.instalacion = instalacion;
-        this.estado = ESTADO_RESERVADO;
+        this.usuario         = usuario;
+        this.instalacion     = instalacion;
+        this.estado          = ESTADO_RESERVADO;
     }
 
-    // Getters y Setters
-    public String getIdTurno() { return idTurno; }
-    public void setIdTurno(String idTurno) { this.idTurno = idTurno; }
+    // ── Getters ──────────────────────────────────────────────────────────────
 
-    public LocalDateTime getFechaHora() { return fechaHora; }
-    public void setFechaHora(LocalDateTime fechaHora) { this.fechaHora = fechaHora; }
+    public int           getIdTurno()              { return idTurno; }
+    public LocalDateTime getFechaHora()            { return fechaHora; }
+    public int           getDuracionMinutos()       { return duracionMinutos; }
+    public Usuario       getUsuario()              { return usuario; }
+    public Instalacion   getInstalacion()          { return instalacion; }
+    public Integer       getNumeroCarrilAsignado() { return numeroCarrilAsignado; }
+    public String        getEstado()               { return estado; }
+    public Persona       getEntrenador()           { return entrenador; }
 
-    public int getDuracionMinutos() { return duracionMinutos; }
-    public void setDuracionMinutos(int duracionMinutos) { this.duracionMinutos = duracionMinutos; }
-
-    public Usuario getUsuario() { return usuario; }
-    public void setUsuario(Usuario usuario) { this.usuario = usuario; }
-
-    public Instalacion getInstalacion() { return instalacion; }
-    public void setInstalacion(Instalacion instalacion) { this.instalacion = instalacion; }
-
-    public Persona getEntrenador() { return entrenador; }
-    public void setEntrenador(Persona entrenador) { this.entrenador = entrenador;}
-
-    //helper para Id Entrenador
+    /** Helper: retorna el ID del entrenador, o null si no hay uno asignado. */
     public Integer getIdEntrenador() {
         return entrenador != null ? entrenador.getId() : null;
     }
-// Getters y Setters para el número de carril asignado, con validación para asegurar que solo se asignen números de carril válidos
-    public Integer getNumeroCarrilAsignado() { return numeroCarrilAsignado; }
-    public void setNumeroCarrilAsignado(Integer numeroCarrilAsignado) {
-        if (numeroCarrilAsignado != null && numeroCarrilAsignado <= 0) {
+
+    // ── Setters ──────────────────────────────────────────────────────────────
+
+    public void setIdTurno(int idTurno)                       { this.idTurno = idTurno; }
+    public void setFechaHora(LocalDateTime fechaHora)         { this.fechaHora = fechaHora; }
+    public void setDuracionMinutos(int duracionMinutos)       { this.duracionMinutos = duracionMinutos; }
+    public void setUsuario(Usuario usuario)                   { this.usuario = usuario; }
+    public void setInstalacion(Instalacion instalacion)       { this.instalacion = instalacion; }
+    public void setEntrenador(Persona entrenador)             { this.entrenador = entrenador; }
+
+    public void setNumeroCarrilAsignado(Integer carril) {
+        if (carril != null && carril <= 0)
             throw new IllegalArgumentException("El carril debe ser mayor a 0.");
-        }
-        this.numeroCarrilAsignado = numeroCarrilAsignado;
+        this.numeroCarrilAsignado = carril;
     }
 
-    public String getEstado() { return estado; }
     public void setEstado(String estado) {
-        if (estado == null) {
+        if (estado == null)
             throw new IllegalArgumentException("El estado no puede ser null.");
-        }
-
-        String normalizado = estado.trim().toUpperCase();
-        if (!ESTADO_RESERVADO.equals(normalizado)
-                && !ESTADO_CANCELADO.equals(normalizado)
-                && !ESTADO_COMPLETADO.equals(normalizado)) {
-            throw new IllegalArgumentException("Estado invalido. Valores permitidos: RESERVADO, CANCELADO, COMPLETADO");
-        }
-
-        this.estado = normalizado;
+        String norm = estado.trim().toUpperCase();
+        if (!ESTADO_RESERVADO.equals(norm)
+                && !ESTADO_CANCELADO.equals(norm)
+                && !ESTADO_COMPLETADO.equals(norm))
+            throw new IllegalArgumentException(
+                "Estado inválido: " + estado + ". Valores: RESERVADO, CANCELADO, COMPLETADO.");
+        this.estado = norm;
     }
 
     @Override
     public String toString() {
-        String detalleCarril = numeroCarrilAsignado != null
-                ? " | Carril: " + numeroCarrilAsignado
-                : "";
-        return "Turno " + idTurno + " | " + fechaHora + " | " + instalacion.getTipo() +
-               detalleCarril + " | Estado: " + estado;
+        String carrilStr = numeroCarrilAsignado != null
+                ? " | Carril: " + numeroCarrilAsignado : "";
+        return "Turno " + idTurno + " | " + fechaHora +
+               " | " + instalacion.getTipo() + carrilStr +
+               " | Estado: " + estado;
     }
 }

@@ -1,49 +1,41 @@
 package entidades;
 
+/**
+ * Piscina — Subclase concreta de Instalacion.
+ *
+ * CORRECCIÓN: constructor actualizado de String a int para idInstalacion,
+ * siguiendo la corrección de la clase padre Instalacion.
+ */
 public class Piscina extends Instalacion {
-    private int numeroCarriles;
-    private double profundidad; // En metros
+
+    private int    numeroCarriles;
+    private double profundidad;     // En metros
 
     public Piscina() {
         super();
     }
 
-    public Piscina(String idInstalacion, String tipo, int capacidadMaxima, int aforoActual,
-                     int numeroCarriles, double profundidad) {
+    public Piscina(int idInstalacion, String tipo, int capacidadMaxima, int aforoActual,
+                   int numeroCarriles, double profundidad) {
         super(idInstalacion, tipo, capacidadMaxima, aforoActual);
         this.numeroCarriles = numeroCarriles;
-        this.profundidad = profundidad;
+        this.profundidad    = profundidad;
     }
 
-    // Getters
-    public int getNumeroCarriles() {
-        return numeroCarriles;
-    }
+    // ── Getters ──────────────────────────────────────────────────────────────
 
-    public double getProfundidad() {
-        return profundidad;
-    }
+    public int    getNumeroCarriles() { return numeroCarriles; }
+    public double getProfundidad()    { return profundidad; }
 
-    // Setters
-    public void setNumeroCarriles(int numeroCarriles) {
-        this.numeroCarriles = numeroCarriles;
-    }
+    // ── Setters ──────────────────────────────────────────────────────────────
 
-    public void setProfundidad(double profundidad) {
-        this.profundidad = profundidad;
-    }
-    
+    public void setNumeroCarriles(int numeroCarriles) { this.numeroCarriles = numeroCarriles; }
+    public void setProfundidad(double profundidad)    { this.profundidad = profundidad; }
+
     @Override
-    public int calcularAforoActual(){
-        return getAforoActual();
-    }
-
- @Override
-
-public String toString() {
-        return "Instalacion: " + getTipo() + 
-               " | Carriles: " + numeroCarriles + 
+    public String toString() {
+        return "Instalacion: " + getTipo() +
+               " | Carriles: " + numeroCarriles +
                " | Profundidad: " + profundidad + "m";
     }
-
 }
