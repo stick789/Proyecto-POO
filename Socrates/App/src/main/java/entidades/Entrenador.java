@@ -4,10 +4,12 @@ public class Entrenador extends Persona  {
     private String especialidad; //  "Natación", "Gimnasio"
     private String rolBD; // Rol leído desde la base de datos
     private int idEntrenador; 
+    private int idInstalacion;
     public Entrenador(String nombre, String email, String especialidad, String tipoDocumento, String numDocumento, int idEntrenador ) {
         super(nombre, email, tipoDocumento, numDocumento);
         this.especialidad = especialidad; //Natación o Gimnasio
         this.idEntrenador = idEntrenador;
+        this.idInstalacion = idInstalacion;
     }
 
     public String getEspecialidad() {
