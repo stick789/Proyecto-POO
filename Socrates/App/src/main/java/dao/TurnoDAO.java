@@ -1,12 +1,6 @@
 package dao;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
-import java.sql.Timestamp;
-import java.sql.Types;
+import java.sql.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,18 +14,18 @@ import entidades.Usuario;
 /**
  * TurnoDAO — Acceso a datos de turnos.
  *
- * <p><b>Compatibilidad SQL verificada:</b></p>
- * <ul>
- *   <li>Columna {@code numero_carril_asignado} (corregida desde
- *       {@code numero_carril_assigned} del SQL original — ver script SQL adjunto).</li>
- *   <li>Columna {@code id_entrenador} (añadida en el script SQL adjunto).</li>
- *   <li>Cast seguro de {@link entidades.Persona} → {@link entidades.Usuario}:
- *       usa instanceof antes de castear para evitar ClassCastException.</li>
- * </ul>
+ * CORRECCIONES:
  *
- * <p><b>Tabla {@code turno} esperada:</b><br>
- * idTurno, fechaHora, duracionMinutos, id_usuario, id_instalacion,
- * numero_carril_asignado (nullable), estado, id_entrenador (nullable)</p>
+ * 1. idTurno ahora es int en Turno.java:
+ *    ANTES: turno.setIdTurno(String.valueOf(keys.getInt(1)))
+ *           y String idTurnoStr = String.valueOf(rs.getInt("idTurno"))
+ *    AHORA: turno.setIdTurno(keys.getInt(1)) — int directo.
+ *
+ * 2. idInstalacion ahora es int en Instalacion.java:
+ *    ANTES: Integer.parseInt(turno.getInstalacion().getIdInstalacion())
+ *    AHORA: turno.getInstalacion().getIdInstalacion() — int directo.
+ *
+ * 3. Cast seguro Persona → Usuario con instanceof (sin ClassCastException).
  */
 public class TurnoDAO implements ITurnoDAO {
 
@@ -40,13 +34,6 @@ public class TurnoDAO implements ITurnoDAO {
     private final IInstalacionDAO instalacionDAO;
     private final IEntrenadorDAO  entrenadorDAO;
 
-    /**
-     * Constructor con inyección de dependencias.
-     *
-     * @param personaDAO     para resolver el Usuario propietario del turno.
-     * @param instalacionDAO para resolver la Instalacion del turno.
-     * @param entrenadorDAO  para resolver el Entrenador asignado (puede ser null).
-     */
     public TurnoDAO(IPersonaDAO personaDAO,
                     IInstalacionDAO instalacionDAO,
                     IEntrenadorDAO entrenadorDAO) {
@@ -76,16 +63,14 @@ public class TurnoDAO implements ITurnoDAO {
     private static final String SQL_SELECT_TODOS      =
             SQL_SELECT_BASE + "ORDER BY fechaHora DESC";
 
-    private static final String SQL_UPDATE_ESTADO =
+    private static final String SQL_UPDATE_ESTADO     =
             "UPDATE turno SET estado = ? WHERE idTurno = ?";
-
     private static final String SQL_UPDATE_ENTRENADOR =
             "UPDATE turno SET id_entrenador = ? WHERE idTurno = ?";
-
-    private static final String SQL_DELETE =
+    private static final String SQL_DELETE            =
             "DELETE FROM turno WHERE idTurno = ?";
 
-    // ── Implementación ────────────────────────────────────────────────────────
+    // ── CRUD ─────────────────────────────────────────────────────────────────
 
     @Override
     public void insertar(Turno turno) {
@@ -98,28 +83,24 @@ public class TurnoDAO implements ITurnoDAO {
             ps.setTimestamp(1, Timestamp.valueOf(turno.getFechaHora()));
             ps.setInt(2, turno.getDuracionMinutos());
             ps.setInt(3, turno.getUsuario().getId());
-            ps.setInt(4, Integer.parseInt(turno.getInstalacion().getIdInstalacion()));
+            ps.setInt(4, turno.getInstalacion().getIdInstalacion()); // ← int directo
 
-            // numero_carril_asignado: NULL para gimnasios
-            if (turno.getNumeroCarrilAsignado() != null) {
+            if (turno.getNumeroCarrilAsignado() != null)
                 ps.setInt(5, turno.getNumeroCarrilAsignado());
-            } else {
+            else
                 ps.setNull(5, Types.INTEGER);
-            }
 
             ps.setString(6, turno.getEstado());
 
-            // id_entrenador: NULL si no hay entrenador asignado
-            if (turno.getIdEntrenador() != null) {
+            if (turno.getIdEntrenador() != null)
                 ps.setInt(7, turno.getIdEntrenador());
-            } else {
+            else
                 ps.setNull(7, Types.INTEGER);
-            }
 
             ps.executeUpdate();
 
             try (ResultSet keys = ps.getGeneratedKeys()) {
-                if (keys.next()) turno.setIdTurno(String.valueOf(keys.getInt(1)));
+                if (keys.next()) turno.setIdTurno(keys.getInt(1)); // ← int directo
             }
 
         } catch (SQLException e) {
@@ -149,17 +130,17 @@ public class TurnoDAO implements ITurnoDAO {
 
     @Override
     public List<Turno> listarPorUsuario(int idUsuario) {
-        return ejecutarConsultaConParam(SQL_SELECT_POR_USER, idUsuario);
+        return ejecutarConParam(SQL_SELECT_POR_USER, idUsuario);
     }
 
     @Override
     public List<Turno> listarPorInstalacion(int idInstalacion) {
-        return ejecutarConsultaConParam(SQL_SELECT_POR_INST, idInstalacion);
+        return ejecutarConParam(SQL_SELECT_POR_INST, idInstalacion);
     }
 
     @Override
     public List<Turno> listarReservadosPorInstalacion(int idInstalacion) {
-        return ejecutarConsultaConParam(SQL_SELECT_RESERVADOS, idInstalacion);
+        return ejecutarConParam(SQL_SELECT_RESERVADOS, idInstalacion);
     }
 
     @Override
@@ -172,7 +153,7 @@ public class TurnoDAO implements ITurnoDAO {
              ResultSet rs = ps.executeQuery()) {
             while (rs.next()) lista.add(mapear(rs));
         } catch (SQLException e) {
-            throw new RuntimeException("Error al listar todos los turnos", e);
+            throw new RuntimeException("Error al listar turnos", e);
         } finally {
             conexion.desconectar();
         }
@@ -201,11 +182,8 @@ public class TurnoDAO implements ITurnoDAO {
         if (con == null) return;
 
         try (PreparedStatement ps = con.prepareStatement(SQL_UPDATE_ENTRENADOR)) {
-            if (idEntrenador != null) {
-                ps.setInt(1, idEntrenador);
-            } else {
-                ps.setNull(1, Types.INTEGER);
-            }
+            if (idEntrenador != null) ps.setInt(1, idEntrenador);
+            else                      ps.setNull(1, Types.INTEGER);
             ps.setInt(2, idTurno);
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -230,63 +208,46 @@ public class TurnoDAO implements ITurnoDAO {
         }
     }
 
-    // ── Mapeo ResultSet → Turno ───────────────────────────────────────────────
+    // ── Mapeo ─────────────────────────────────────────────────────────────────
 
-    /**
-     * Convierte una fila de la BD en un Turno completamente hidratado.
-     *
-     * <p><b>BUG 8 corregido:</b> el cast de Persona a Usuario se hace con instanceof
-     * para evitar ClassCastException si por algún motivo el id_usuario apunta a un
-     * administrador (no debería ocurrir, pero se maneja de forma segura).</p>
-     *
-     * <p>La carga del entrenador es lazy-safe: si id_entrenador es NULL,
-     * se deja null sin lanzar error.</p>
-     */
     private Turno mapear(ResultSet rs) throws SQLException {
-        String idTurnoStr   = String.valueOf(rs.getInt("idTurno"));
-        LocalDateTime fecha = rs.getTimestamp("fechaHora").toLocalDateTime();
-        int duracion        = rs.getInt("duracionMinutos");
-        int idUsuario       = rs.getInt("id_usuario");
-        int idInstalacion   = rs.getInt("id_instalacion");
-        String estado       = rs.getString("estado");
+        int           idTurno      = rs.getInt("idTurno");          // ← int directo
+        LocalDateTime fecha        = rs.getTimestamp("fechaHora").toLocalDateTime();
+        int           duracion     = rs.getInt("duracionMinutos");
+        int           idUsuario    = rs.getInt("id_usuario");
+        int           idInst       = rs.getInt("id_instalacion");
+        String        estado       = rs.getString("estado");
 
-        // numero_carril_asignado puede ser NULL (gimnasio) → Integer nullable
-        int carrilRaw       = rs.getInt("numero_carril_asignado");
+        int     carrilRaw   = rs.getInt("numero_carril_asignado");
         Integer carril      = rs.wasNull() ? null : carrilRaw;
 
-        // id_entrenador puede ser NULL (turno sin entrenador)
-        int idEntRaw        = rs.getInt("id_entrenador");
+        int     idEntRaw    = rs.getInt("id_entrenador");
         Integer idEntrenador = rs.wasNull() ? null : idEntRaw;
 
-        // ── Resolver Usuario propietario (BUG 8: cast seguro con instanceof) ──
+        // Resolver Usuario — cast seguro con instanceof
         entidades.Persona personaRaw = personaDAO.buscarPorId(idUsuario)
                 .orElseThrow(() -> new RuntimeException(
                         "Usuario id=" + idUsuario + " no encontrado al mapear Turno."));
 
-        if (!(personaRaw instanceof Usuario)) {
-            throw new RuntimeException(
-                "Se esperaba Usuario al mapear turno, pero id=" + idUsuario +
-                " es " + personaRaw.getClass().getSimpleName());
-        }
-        Usuario usuario = (Usuario) personaRaw;
+        if (!(personaRaw instanceof Usuario))
+            throw new RuntimeException("Se esperaba Usuario para turno, pero id=" + idUsuario +
+                    " es " + personaRaw.getClass().getSimpleName());
 
-        Instalacion instalacion = instalacionDAO.buscarPorId(idInstalacion)
+        Instalacion instalacion = instalacionDAO.buscarPorId(idInst)
                 .orElseThrow(() -> new RuntimeException(
-                        "Instalación id=" + idInstalacion + " no encontrada al mapear Turno."));
+                        "Instalación id=" + idInst + " no encontrada al mapear Turno."));
 
-        Turno turno = new Turno(idTurnoStr, fecha, duracion, usuario, instalacion);
+        Turno turno = new Turno(idTurno, fecha, duracion, (Usuario) personaRaw, instalacion);
         turno.setNumeroCarrilAsignado(carril);
         turno.setEstado(estado);
 
-        // Cargar entrenador solo si hay uno asignado
-        if (idEntrenador != null) {
+        if (idEntrenador != null)
             entrenadorDAO.buscarPorId(idEntrenador).ifPresent(turno::setEntrenador);
-        }
 
         return turno;
     }
 
-    private List<Turno> ejecutarConsultaConParam(String sql, int param) {
+    private List<Turno> ejecutarConParam(String sql, int param) {
         Connection con = conexion.conectar();
         List<Turno> lista = new ArrayList<>();
         if (con == null) return lista;

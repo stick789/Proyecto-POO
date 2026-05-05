@@ -11,26 +11,18 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * InstalacionDAO — Acceso a datos de instalaciones (gimnasios y piscinas).
+ * InstalacionDAO — Acceso a datos de instalaciones.
  *
- * OPERACIONES:
- *   • insertar(): Crea una nueva instalación (gimnasio o piscina).
- *   • buscarPorId(): Obtiene una instalación específica.
- *   • listarTodos(): Obtiene todas las instalaciones.
- *   • listarGimnasios(): Obtiene solo gimnasios.
- *   • listarPiscinas(): Obtiene solo piscinas.
- *   • actualizar(): Modifica datos de una instalación.
- *   • actualizarAforo(): Cambia los cupos disponibles.
- *   • eliminar(): Borra una instalación.
- *
- * ESTRUCTURA:
- *   Cada instalación puede ser un gimnasio o una piscina.
+ * CORRECCIÓN: Eliminadas las conversiones String↔int de idInstalacion.
+ *   ANTES: instalacion.setIdInstalacion(String.valueOf(idGenerado))
+ *          y Integer.parseInt(instalacion.getIdInstalacion())
+ *   AHORA: instalacion.setIdInstalacion(idGenerado) directamente — int siempre.
  */
 public class InstalacionDAO implements IInstalacionDAO {
 
     private final Conexion conexion = Conexion.getInstancia();
 
-    // ── SQL ────────────────────────────────────────────────────────────────────
+    // ── SQL ───────────────────────────────────────────────────────────────────
 
     private static final String SQL_INSERT_INSTALACION =
             "INSERT INTO instalacion (tipo, capacidadMaxima, aforoActual) VALUES (?, ?, ?)";
@@ -41,20 +33,16 @@ public class InstalacionDAO implements IInstalacionDAO {
     private static final String SQL_INSERT_PISCINA =
             "INSERT INTO piscina (idInstalacion, numeroCarriles, profundidad) VALUES (?, ?, ?)";
 
-    /**
-     * Consulta base que obtiene información de todas las instalaciones.
-     * Incluye datos de piscinas cuando corresponde.
-     */
     private static final String SQL_SELECT_BASE =
             "SELECT i.idInstalacion, i.tipo, i.capacidadMaxima, i.aforoActual, " +
             "       p.numeroCarriles, p.profundidad " +
             "FROM instalacion i " +
             "LEFT JOIN piscina p ON i.idInstalacion = p.idInstalacion ";
 
-    private static final String SQL_SELECT_POR_ID  = SQL_SELECT_BASE + "WHERE i.idInstalacion = ?";
-    private static final String SQL_SELECT_TODOS   = SQL_SELECT_BASE;
-    private static final String SQL_SELECT_GIMNAS  = SQL_SELECT_BASE + "WHERE i.tipo = 'GIMNASIO'";
-    private static final String SQL_SELECT_PISC    = SQL_SELECT_BASE + "WHERE i.tipo = 'PISCINA'";
+    private static final String SQL_SELECT_POR_ID = SQL_SELECT_BASE + "WHERE i.idInstalacion = ?";
+    private static final String SQL_SELECT_TODOS  = SQL_SELECT_BASE;
+    private static final String SQL_SELECT_GIMNAS = SQL_SELECT_BASE + "WHERE i.tipo = 'GIMNASIO'";
+    private static final String SQL_SELECT_PISC   = SQL_SELECT_BASE + "WHERE i.tipo = 'PISCINA'";
 
     private static final String SQL_UPDATE_INSTALACION =
             "UPDATE instalacion SET capacidadMaxima = ?, aforoActual = ? WHERE idInstalacion = ?";
@@ -67,9 +55,8 @@ public class InstalacionDAO implements IInstalacionDAO {
 
     private static final String SQL_DELETE =
             "DELETE FROM instalacion WHERE idInstalacion = ?";
-    // gimnasio/piscina se borran solos por ON DELETE CASCADE
 
-    // ── Implementación ─────────────────────────────────────────────────────────
+    // ── Implementación ────────────────────────────────────────────────────────
 
     @Override
     public void insertar(Instalacion instalacion) {
@@ -79,47 +66,43 @@ public class InstalacionDAO implements IInstalacionDAO {
         try {
             con.setAutoCommit(false);
 
-            // Guarda la instalación base en la BD
             int idGenerado;
-            try (PreparedStatement psI = con.prepareStatement(
+            try (PreparedStatement ps = con.prepareStatement(
                     SQL_INSERT_INSTALACION, Statement.RETURN_GENERATED_KEYS)) {
-
-                psI.setString(1, instalacion.getTipo());
-                psI.setInt(2, instalacion.getCapacidadMaxima());
-                psI.setInt(3, instalacion.getAforoActual());
-                psI.executeUpdate();
-
-                try (ResultSet keys = psI.getGeneratedKeys()) {
+                ps.setString(1, instalacion.getTipo());
+                ps.setInt(2, instalacion.getCapacidadMaxima());
+                ps.setInt(3, instalacion.getAforoActual());
+                ps.executeUpdate();
+                try (ResultSet keys = ps.getGeneratedKeys()) {
                     if (!keys.next()) throw new SQLException("No se generó idInstalacion.");
                     idGenerado = keys.getInt(1);
-                    instalacion.setIdInstalacion(String.valueOf(idGenerado)); // reflejar en objeto
+                    instalacion.setIdInstalacion(idGenerado); // ← int directo, sin String.valueOf()
                 }
             }
 
-            // Guarda datos específicos según el tipo (gimnasio o piscina)
             if (instalacion instanceof Piscina) {
                 Piscina p = (Piscina) instalacion;
-                try (PreparedStatement psP = con.prepareStatement(SQL_INSERT_PISCINA)) {
-                    psP.setInt(1, idGenerado);
-                    psP.setInt(2, p.getNumeroCarriles());
-                    psP.setDouble(3, p.getProfundidad());
-                    psP.executeUpdate();
+                try (PreparedStatement ps = con.prepareStatement(SQL_INSERT_PISCINA)) {
+                    ps.setInt(1, idGenerado);
+                    ps.setInt(2, p.getNumeroCarriles());
+                    ps.setDouble(3, p.getProfundidad());
+                    ps.executeUpdate();
                 }
             } else if (instalacion instanceof Gimnasio) {
-                try (PreparedStatement psG = con.prepareStatement(SQL_INSERT_GIMNASIO)) {
-                    psG.setInt(1, idGenerado);
-                    psG.setInt(2, instalacion.getAforoActual());
-                    psG.executeUpdate();
+                try (PreparedStatement ps = con.prepareStatement(SQL_INSERT_GIMNASIO)) {
+                    ps.setInt(1, idGenerado);
+                    ps.setInt(2, instalacion.getAforoActual());
+                    ps.executeUpdate();
                 }
             }
 
             con.commit();
 
         } catch (SQLException e) {
-            try { con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            revertir(con);
             throw new RuntimeException("Error al insertar instalación", e);
         } finally {
-            try { con.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
+            restaurarAutoCommit(con);
             conexion.desconectar();
         }
     }
@@ -143,54 +126,48 @@ public class InstalacionDAO implements IInstalacionDAO {
     }
 
     @Override
-    public List<Instalacion> listarTodos() {
-        return ejecutarConsultaLista(SQL_SELECT_TODOS);
-    }
+    public List<Instalacion> listarTodos()     { return ejecutarLista(SQL_SELECT_TODOS);  }
 
     @Override
-    public List<Instalacion> listarGimnasios() {
-        return ejecutarConsultaLista(SQL_SELECT_GIMNAS);
-    }
+    public List<Instalacion> listarGimnasios() { return ejecutarLista(SQL_SELECT_GIMNAS); }
 
     @Override
-    public List<Instalacion> listarPiscinas() {
-        return ejecutarConsultaLista(SQL_SELECT_PISC);
-    }
+    public List<Instalacion> listarPiscinas()  { return ejecutarLista(SQL_SELECT_PISC);   }
 
     @Override
     public void actualizar(Instalacion instalacion) {
         Connection con = conexion.conectar();
         if (con == null) return;
 
-        int id = Integer.parseInt(instalacion.getIdInstalacion());
+        int id = instalacion.getIdInstalacion(); // ← int directo, sin parseInt()
 
         try {
             con.setAutoCommit(false);
 
-            try (PreparedStatement psI = con.prepareStatement(SQL_UPDATE_INSTALACION)) {
-                psI.setInt(1, instalacion.getCapacidadMaxima());
-                psI.setInt(2, instalacion.getAforoActual());
-                psI.setInt(3, id);
-                psI.executeUpdate();
+            try (PreparedStatement ps = con.prepareStatement(SQL_UPDATE_INSTALACION)) {
+                ps.setInt(1, instalacion.getCapacidadMaxima());
+                ps.setInt(2, instalacion.getAforoActual());
+                ps.setInt(3, id);
+                ps.executeUpdate();
             }
 
             if (instalacion instanceof Piscina) {
                 Piscina p = (Piscina) instalacion;
-                try (PreparedStatement psP = con.prepareStatement(SQL_UPDATE_PISCINA)) {
-                    psP.setInt(1, p.getNumeroCarriles());
-                    psP.setDouble(2, p.getProfundidad());
-                    psP.setInt(3, id);
-                    psP.executeUpdate();
+                try (PreparedStatement ps = con.prepareStatement(SQL_UPDATE_PISCINA)) {
+                    ps.setInt(1, p.getNumeroCarriles());
+                    ps.setDouble(2, p.getProfundidad());
+                    ps.setInt(3, id);
+                    ps.executeUpdate();
                 }
             }
 
             con.commit();
 
         } catch (SQLException e) {
-            try { con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
-            throw new RuntimeException("Error al actualizar instalación", e);
+            revertir(con);
+            throw new RuntimeException("Error al actualizar instalación id=" + id, e);
         } finally {
-            try { con.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
+            restaurarAutoCommit(con);
             conexion.desconectar();
         }
     }
@@ -205,7 +182,7 @@ public class InstalacionDAO implements IInstalacionDAO {
             ps.setInt(2, idInstalacion);
             ps.executeUpdate();
         } catch (SQLException e) {
-            throw new RuntimeException("Error al actualizar aforo", e);
+            throw new RuntimeException("Error al actualizar aforo id=" + idInstalacion, e);
         } finally {
             conexion.desconectar();
         }
@@ -216,7 +193,6 @@ public class InstalacionDAO implements IInstalacionDAO {
         Connection con = conexion.conectar();
         if (con == null) return;
 
-        // Al borrar la instalación, los datos del gimnasio o piscina se borran automáticamente
         try (PreparedStatement ps = con.prepareStatement(SQL_DELETE)) {
             ps.setInt(1, id);
             ps.executeUpdate();
@@ -227,31 +203,29 @@ public class InstalacionDAO implements IInstalacionDAO {
         }
     }
 
-    // ── Mapeo ResultSet → Instalacion (polimórfico) ────────────────────────────
+    // ── Mapeo ─────────────────────────────────────────────────────────────────
 
     /**
-     * Convierte una fila de la BD en un objeto Instalacion (Gimnasio o Piscina).
-     * Si tiene información de piscina, crea una Piscina; si no, crea un Gimnasio.
+     * Convierte una fila en Gimnasio o Piscina según los datos del JOIN.
+     * wasNull() detecta si numeroCarriles era NULL (= es Gimnasio).
      */
     private Instalacion mapear(ResultSet rs) throws SQLException {
-        String idStr    = String.valueOf(rs.getInt("idInstalacion"));
-        String tipo     = rs.getString("tipo");
-        int capMax      = rs.getInt("capacidadMaxima");
-        int aforoActual = rs.getInt("aforoActual");
+        int    id           = rs.getInt("idInstalacion");   // ← int directo
+        String tipo         = rs.getString("tipo");
+        int    capMax       = rs.getInt("capacidadMaxima");
+        int    aforoActual  = rs.getInt("aforoActual");
 
-        int numeroCarriles = rs.getInt("numeroCarriles"); // 0 si NULL (getInt devuelve 0 para null)
-        boolean esPiscina  = !rs.wasNull();               // wasNull() detecta si el campo era NULL
+        int     carriles  = rs.getInt("numeroCarriles");
+        boolean esPiscina = !rs.wasNull();
 
         if (esPiscina) {
             double profundidad = rs.getDouble("profundidad");
-            return new Piscina(idStr, tipo, capMax, aforoActual, numeroCarriles, profundidad);
-        } else {
-            return new Gimnasio(idStr, tipo, capMax, aforoActual);
+            return new Piscina(id, tipo, capMax, aforoActual, carriles, profundidad);
         }
+        return new Gimnasio(id, tipo, capMax, aforoActual);
     }
 
-    /** Ejecuta cualquier SELECT sin parámetros y devuelve la lista de instalaciones. */
-    private List<Instalacion> ejecutarConsultaLista(String sql) {
+    private List<Instalacion> ejecutarLista(String sql) {
         Connection con = conexion.conectar();
         List<Instalacion> lista = new ArrayList<>();
         if (con == null) return lista;
@@ -265,5 +239,13 @@ public class InstalacionDAO implements IInstalacionDAO {
             conexion.desconectar();
         }
         return lista;
+    }
+
+    private void revertir(Connection con) {
+        if (con != null) try { con.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+    }
+
+    private void restaurarAutoCommit(Connection con) {
+        if (con != null) try { con.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
     }
 }

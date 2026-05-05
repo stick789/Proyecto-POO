@@ -3,6 +3,13 @@
   "configurations": [
     {
         "type": "java",
+        "name": "App",
+        "request": "launch",
+        "mainClass": "socratesGui/socratesGui.App",
+        "projectName": "ui_admin"
+    },
+    {
+        "type": "java",
         "name": "MainLogic",
         "request": "launch",
         "mainClass": "socratesGui/negocio.LogicaAdmin.MainLogic",
