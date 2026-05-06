@@ -1,6 +1,10 @@
 package dao;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -50,7 +54,7 @@ public class PersonaDAO implements IPersonaDAO {
             "JOIN  persona p   ON u.id_persona         = p.id_persona " +
             "LEFT JOIN rol r   ON u.id_rol              = r.id_rol " +
             "LEFT JOIN administrador a ON a.id_administrador = u.idusuario " +
-            "LEFT JOIN entrenador    e ON e.id_entrenador    = u.idusuario ";  // ← nuevo JOIN
+            "LEFT JOIN entrenador    e ON e.idEntrenador    = u.idusuario ";  // ← nuevo JOIN
 
     private static final String SQL_SELECT_POR_ID    = SQL_SELECT_BASE + "WHERE u.idusuario = ?";
     private static final String SQL_SELECT_POR_EMAIL = SQL_SELECT_BASE + "WHERE p.email = ?";
