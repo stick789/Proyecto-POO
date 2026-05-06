@@ -81,19 +81,21 @@
              wrapText="true" prefWidth="260.0" />
 
       <!-- Botones de acción -->
-      <Button mnemonicParsing="false"
-              prefHeight="30.0" prefWidth="130.0"
-              style="-fx-background-color: #2E6B7A; -fx-text-fill: white;
-                     -fx-background-radius: 10; -fx-font-size: 13px;"
-              text="Registrarse" />
-
-      <Button mnemonicParsing="false"
+        <Button mnemonicParsing="false"
               prefHeight="30.0" prefWidth="130.0"
               onAction="#onLogin"
               style="-fx-background-color: #2E6B7A; -fx-text-fill: white;
                      -fx-background-radius: 10; -fx-font-size: 13px;
                      -fx-cursor: hand;"
               text="Iniciar Sesión" />
+
+      <Button mnemonicParsing="false"
+              prefHeight="30.0" prefWidth="130.0"
+              style="-fx-background-color: #2E6B7A; -fx-text-fill: white;
+                     -fx-background-radius: 10; -fx-font-size: 13px;"
+              text="Registrarse" />
+
+    
 
       <Label text="O" />
 
