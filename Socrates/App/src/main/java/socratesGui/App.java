@@ -67,11 +67,11 @@ public class App extends Application {
     }
 
     static Parent loadFXML(String fxml) throws IOException {
-        FXMLLoader loader = new FXMLLoader(App.class.getResource("/socrates/" + fxml + ".fxml"));
+        FXMLLoader loader = new FXMLLoader(App.class.getResource("/Interface/" + fxml + ".fxml"));
         if (loader.getLocation() == null) {
             throw new IOException(
-                "No se encontró el archivo FXML: /socrates/" + fxml + ".fxml\n" +
-                "Verifica que exista en src/main/resources/socrates/"
+                "No se encontró el archivo FXML: /Interface/" + fxml + ".fxml\n" +
+                "Verifica que exista en src/main/resources/Interface/"
             );
         }
         return loader.load();
