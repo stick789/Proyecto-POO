@@ -151,6 +151,19 @@ INSERT IGNORE INTO `rol` (`id_rol`, `nombre_rol`, `descripcion`) VALUES
 (2, 'ADMINISTRADOR', 'Administrador del sistema'),
 (3, 'ENTRENADOR', 'Entrenador del gimnasio o piscina');
 
+-- --------------------------------------------------------
+-- Tabla : sede
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `sede` (
+  `idSede` int(11) NOT NULL AUTO_INCREMENT,
+  `nombre` varchar(150) NOT NULL,
+  `direccion` varchar(255) DEFAULT NULL,
+  `telefono` varchar(50) DEFAULT NULL,
+  `email` varchar(150) DEFAULT NULL,
+  PRIMARY KEY (`idSede`),
+  UNIQUE KEY `uniq_sede_nombre` (`nombre`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
