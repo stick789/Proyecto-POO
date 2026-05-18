@@ -164,6 +164,17 @@ CREATE TABLE IF NOT EXISTS `sede` (
   UNIQUE KEY `uniq_sede_nombre` (`nombre`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- Nueva columna en instalacion para relacionar con sede
+ALTER TABLE `instalacion` ADD COLUMN `idSede` int(11) DEFAULT NULL,
+ADD KEY `fk_instalacion_sede` (`idSede`),
+ADD CONSTRAINT `fk_instalacion_sede` FOREIGN KEY (`idSede`) REFERENCES `sede` (`idSede`) ON DELETE SET NULL;
+
+-- Nueva columna en turno para relacionar con sede
+ALTER TABLE `turno` ADD COLUMN `idSede` int(11) DEFAULT NULL,
+ADD KEY `fk_turno_sede` (`idSede`),
+ADD CONSTRAINT `fk_turno_sede` FOREIGN KEY (`idSede`) REFERENCES `sede` (`idSede`) ON DELETE SET NULL;
+
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
