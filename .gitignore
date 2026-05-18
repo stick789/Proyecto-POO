@@ -1,0 +1,53 @@
+# Java compiled classes
+*.class
+
+# Log files
+*.log
+
+# Package files
+*.jar
+*.war
+*.ear
+
+# Maven
+/target/
+/.mvn/wrapper/maven-wrapper.jar
+/mvnw
+/mvnw.cmd
+
+# IDEs
+# IntelliJ
+*.iml
+/.idea/
+/out/
+
+# VS Code
+.vscode/
+
+# Eclipse
+.project
+.classpath
+.settings/
+
+# NetBeans
+nbproject/private/
+build/
+nbbuild/
+dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp
+*.tmp
+*~
+
+# Local env / secrets
+.env
+.env.local
+secrets.properties
+*.secret
+
+# Reports / build artifacts
+/reports/
