@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.util.Optional;
 
 import dao.PersonaDAO;
+import entidades.Administrador;
 import entidades.Persona;
+import entidades.Usuario;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
@@ -14,14 +16,11 @@ import javafx.scene.control.TextField;
 /**
  * LoginController — Controlador del formulario de login.
  *
- * Responsabilidades:
- *  1. Recibir email + contraseña del formulario.
- *  2. Verificar credenciales contra la BD vía PersonaDAO.
- *  3. Si OK → guardar sesión y navegar al dashboard.
- *  4. Si falla → mostrar mensaje de error inline (sin Alert emergente).
+ * USUARIOS DEMO (sin BD):
+ *   admin@demo.com   / admin123   → DashboardAdmin
+ *   usuario@demo.com / user123    → DashboardUsuario
  *
- * La conexión a la BD ocurre aquí, NO en App.start(), para que la
- * pantalla de login sea siempre visible incluso si la BD está caída.
+ * Si el email NO es demo, se consulta la BD real.
  */
 public class LoginController {
 
@@ -31,63 +30,94 @@ public class LoginController {
 
     private final PersonaDAO personaDAO = new PersonaDAO();
 
+    // ── Credenciales demo ─────────────────────────────────────────────────────
+    private static final String DEMO_ADMIN_EMAIL   = "admin@demo.com";
+    private static final String DEMO_ADMIN_PASS    = "admin123";
+    private static final String DEMO_USUARIO_EMAIL = "usuario@demo.com";
+    private static final String DEMO_USUARIO_PASS  = "user123";
+
     @FXML
-    private void onLogin() {
-        lblError.setText("");
+private void onLogin() {
+    lblError.setText("");
 
-        String email = txtEmail.getText().trim();
-        String clave  = txtContrasena.getText();
+    String email = txtEmail.getText().trim();
+    String clave  = txtContrasena.getText();
 
-        // Validación básica en cliente
-        if (email.isEmpty() || clave.isEmpty()) {
-            lblError.setText("Ingresa tu correo y contraseña.");
+    if (email.isEmpty() || clave.isEmpty()) {
+        lblError.setText("Ingresa tu correo y contraseña.");
+        return;
+    }
+
+    // ── 1. Intentar login demo (sin BD) ──────────────────────
+    Persona personaDemo = intentarLoginDemo(email, clave);
+    if (personaDemo != null) {
+        SesionActual.setUsuario(personaDemo);
+        navegarSegunRol(personaDemo);
+        return;
+    }
+
+    // ── 2. Login real contra la BD ────────────────────────────
+    try {
+        Optional<Persona> resultado = personaDAO.buscarPorEmail(email);
+
+        if (resultado.isEmpty()) {
+            lblError.setText("Correo no registrado.");
             return;
         }
 
+        Persona persona = resultado.get();
+
+        if (!verificarClave(persona, clave)) {
+            lblError.setText("Contraseña incorrecta.");
+            txtContrasena.clear();
+            return;
+        }
+
+        SesionActual.setUsuario(persona);
+        navegarSegunRol(persona);
+
+    } catch (RuntimeException e) {
+    lblError.setText(e.getCause() != null 
+        ? e.getCause().getMessage() 
+        : e.getMessage());
+}
+}
+
+    /**
+     * Devuelve un Persona demo si las credenciales coinciden, o null si no es demo.
+     * El id = 0 activa el modo demo en los dashboards (sin consultas a BD).
+     */
+    private Persona intentarLoginDemo(String email, String clave) {
+        if (DEMO_ADMIN_EMAIL.equals(email) && DEMO_ADMIN_PASS.equals(clave)) {
+            return new Administrador(0, "Admin Demo", email, "admin123", "CC", "00000000");
+        }
+        if (DEMO_USUARIO_EMAIL.equals(email) && DEMO_USUARIO_PASS.equals(clave)) {
+            return new Usuario(0, "Usuario Demo", email, "CC", "00000000", true, "A");
+        }
+        return null;
+    }
+
+    /** Redirige al dashboard correcto según el tipo de Persona. */
+    private void navegarSegunRol(Persona persona) {
         try {
-            // PersonaDAO.buscarPorEmail retorna Usuario o Administrador (polimorfismo)
-            Optional<Persona> resultado = personaDAO.buscarPorEmail(email);
-
-            if (resultado.isEmpty()) {
-                lblError.setText("Correo no registrado.");
-                return;
+            if (persona instanceof Administrador) {
+                App.setRoot("dashboardAdmin");
+            } else {
+                App.setRoot("dashboardUsuario");
             }
-
-            Persona persona = resultado.get();
-
-            // Verificación de contraseña según subtipo
-            boolean claveCorrecta = verificarClave(persona, clave);
-
-            if (!claveCorrecta) {
-                lblError.setText("Contraseña incorrecta.");
-                txtContrasena.clear();
-                return;
-            }
-
-            // Login exitoso: guardar sesión y navegar
-            SesionActual.setUsuario(persona);
-            App.setRoot("dashboard");
-
         } catch (IOException e) {
             lblError.setText("Error de navegación: " + e.getMessage());
-        } catch (RuntimeException e) {
-            // Captura errores de BD (RuntimeException lanzado por PersonaDAO)
-            lblError.setText("No se pudo conectar a la base de datos.\nVerifica tu conexión.");
         }
     }
 
     /**
      * Compara la clave ingresada con la almacenada en el objeto Persona.
-     *
-     * Por ahora compara en texto plano para compatibilidad con la BD actual.
-     * Cuando se implemente PBKDF2 (ver PersonaControl_login_snippet.java),
-     * este método se reemplaza por la verificación de hash.
+     * Comparación en texto plano — reemplazar por hash cuando se implemente PBKDF2.
      */
     private boolean verificarClave(Persona persona, String claveIngresada) {
-        // Obtener la contraseña almacenada según el subtipo
-        if (persona instanceof entidades.Administrador) {
-            String hashAdmin = ((entidades.Administrador) persona).getContraseñaAdmin();
-            return claveIngresada.equals(hashAdmin);
+        if (persona instanceof Administrador) {
+            String hash = ((Administrador) persona).getContraseñaAdmin();
+            return claveIngresada.equals(hash);
         }
         if (persona instanceof entidades.Usuario) {
             String hash = ((entidades.Usuario) persona).getContraseña();
@@ -96,13 +126,11 @@ public class LoginController {
         return false;
     }
 
-    /** Permite salir de la aplicación con Escape (opcional, para UX). */
     @FXML
     private void onCancelar() {
         Platform.exit();
     }
 
-    /** Navega a la pantalla de acceso institucional con Compensar. */
     @FXML
     private void onLoginCompensar() {
         try {
