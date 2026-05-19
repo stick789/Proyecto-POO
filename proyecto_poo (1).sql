@@ -1,6 +1,16 @@
+-- phpMyAdmin SQL Dump
+-- version 5.2.1
+-- https://www.phpmyadmin.net/
+--
+-- Servidor: 127.0.0.1
+-- Tiempo de generación: 20-05-2026 a las 00:20:32
+-- Versión del servidor: 10.4.32-MariaDB
+-- Versión de PHP: 8.2.12
+
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
+
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -8,110 +18,172 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Crear la base de datos si no existe
+-- Base de datos: `proyecto_poo`
 --
-CREATE DATABASE IF NOT EXISTS `proyecto_poo`;
-USE `proyecto_poo`;
 
 -- --------------------------------------------------------
 
--- 1. TABLAS INDEPENDIENTES
+--
+-- Estructura de tabla para la tabla `administrador`
+--
+
+CREATE TABLE `administrador` (
+  `id_administrador` int(11) NOT NULL,
+  `contraseña_administrador` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `administrador`
+--
+
+INSERT INTO `administrador` (`id_administrador`, `contraseña_administrador`) VALUES
+(1, 'admin123');
+
 -- --------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `persona` (
-  `id_persona` int(11) NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(100) NOT NULL,
-  `email` varchar(100) NOT NULL,
-  `tipodocumento` varchar(100) NOT NULL,
-  `numdocumento` varchar(100) NOT NULL,
-  PRIMARY KEY (`id_persona`),
-  UNIQUE KEY `idx_numdocumento` (`numdocumento`)
+--
+-- Estructura de tabla para la tabla `entrenador`
+--
+
+CREATE TABLE `entrenador` (
+  `idEntrenador` int(11) NOT NULL,
+  `especialidad` varchar(50) NOT NULL,
+  `numDocumento` varchar(100) DEFAULT NULL,
+  `idInstalacion` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE IF NOT EXISTS `rol` (
-  `id_rol` int(11) NOT NULL AUTO_INCREMENT,
-  `nombre_rol` varchar(50) NOT NULL,
-  `descripcion` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`id_rol`),
-  UNIQUE KEY `nombre_rol` (`nombre_rol`)
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `gimnasio`
+--
+
+CREATE TABLE `gimnasio` (
+  `idInstalacion` int(11) NOT NULL,
+  `aforo_actual` int(11) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE IF NOT EXISTS `instalacion` (
-  `idInstalacion` int(11) NOT NULL AUTO_INCREMENT,
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `historial_citas`
+--
+
+CREATE TABLE `historial_citas` (
+  `idHistorial` int(11) NOT NULL,
+  `id_turno` int(11) NOT NULL,
+  `id_usuario` int(11) NOT NULL,
+  `id_instalacion` int(11) NOT NULL,
+  `estado` varchar(50) DEFAULT NULL,
+  `fecha_evento` datetime DEFAULT current_timestamp(),
+  `detalle` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `instalacion`
+--
+
+CREATE TABLE `instalacion` (
+  `idInstalacion` int(11) NOT NULL,
   `tipo` varchar(100) NOT NULL,
   `capacidadMaxima` int(11) NOT NULL,
   `aforoActual` int(11) NOT NULL,
   `nombre` varchar(100) DEFAULT NULL,
-  PRIMARY KEY (`idInstalacion`)
+  `idSede` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE IF NOT EXISTS `pagos` (
-  `idPago` int(11) NOT NULL AUTO_INCREMENT,
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `pagos`
+--
+
+CREATE TABLE `pagos` (
+  `idPago` int(11) NOT NULL,
   `monto` decimal(15,4) DEFAULT NULL,
   `metodoPago` varchar(30) DEFAULT NULL,
-  `estadoPago` varchar(30) DEFAULT NULL,
-  PRIMARY KEY (`idPago`)
+  `estadoPago` varchar(30) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- 2. TABLAS CON DEPENDENCIAS PRIMARIAS
 -- --------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `usuarios` (
-  `idusuario` int(11) NOT NULL AUTO_INCREMENT,
+--
+-- Estructura de tabla para la tabla `persona`
+--
+
+CREATE TABLE `persona` (
   `id_persona` int(11) NOT NULL,
-  `contraseña` varchar(255) NOT NULL,
-  `categoria` varchar(1) DEFAULT NULL,
-  `esAfiliado` tinyint(1) NOT NULL,
-  `id_rol` int(11) NOT NULL DEFAULT 1,
-  PRIMARY KEY (`idusuario`),
-  KEY `fk_usuarios_persona` (`id_persona`),
-  KEY `fk_usuarios_rol` (`id_rol`),
-  CONSTRAINT `fk_usuarios_persona` FOREIGN KEY (`id_persona`) REFERENCES `persona` (`id_persona`) ON DELETE CASCADE,
-  CONSTRAINT `fk_usuarios_rol` FOREIGN KEY (`id_rol`) REFERENCES `rol` (`id_rol`)
+  `nombre` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `tipodocumento` varchar(100) NOT NULL,
+  `numdocumento` varchar(100) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- 3. TABLAS ESPECIALIZADAS (Administrador, Entrenador, Subtipos de Instalación)
+--
+-- Volcado de datos para la tabla `persona`
+--
+
+INSERT INTO `persona` (`id_persona`, `nombre`, `email`, `tipodocumento`, `numdocumento`) VALUES
+(1, 'Admin Principal', 'admin@test.com', 'CC', '11111111'),
+(2, 'Usuario Prueba', 'usuario@test.com', 'CC', '22222222');
+
 -- --------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `administrador` (
-  `id_administrador` int(11) NOT NULL,
-  `contraseña_administrador` varchar(255) NOT NULL,
-  PRIMARY KEY (`id_administrador`),
-  CONSTRAINT `fk_admin_usuario` FOREIGN KEY (`id_administrador`) REFERENCES `usuarios` (`idusuario`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+--
+-- Estructura de tabla para la tabla `piscina`
+--
 
-CREATE TABLE IF NOT EXISTS `entrenador` (
-  `idEntrenador` int(11) NOT NULL AUTO_INCREMENT,
-  `especialidad` varchar(50) NOT NULL,
-  `numDocumento` varchar(100) DEFAULT NULL,
-  `idInstalacion` int(11) DEFAULT NULL,
-  PRIMARY KEY (`idEntrenador`),
-  KEY `fk_entrenador_persona` (`numDocumento`),
-  KEY `fk_entrenador_instalacion` (`idInstalacion`),
-  CONSTRAINT `fk_entrenador_instalacion` FOREIGN KEY (`idInstalacion`) REFERENCES `instalacion` (`idInstalacion`),
-  CONSTRAINT `fk_entrenador_persona` FOREIGN KEY (`numDocumento`) REFERENCES `persona` (`numdocumento`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-CREATE TABLE IF NOT EXISTS `gimnasio` (
-  `idInstalacion` int(11) NOT NULL,
-  `aforo_actual` int(11) DEFAULT 0,
-  PRIMARY KEY (`idInstalacion`),
-  CONSTRAINT `fk_gimnasio_instalacion` FOREIGN KEY (`idInstalacion`) REFERENCES `instalacion` (`idInstalacion`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-CREATE TABLE IF NOT EXISTS `piscina` (
+CREATE TABLE `piscina` (
   `idInstalacion` int(11) NOT NULL,
   `numeroCarriles` int(11) NOT NULL,
-  `profundidad` decimal(4,2) DEFAULT NULL,
-  PRIMARY KEY (`idInstalacion`),
-  CONSTRAINT `fk_piscina_instalacion` FOREIGN KEY (`idInstalacion`) REFERENCES `instalacion` (`idInstalacion`) ON DELETE CASCADE
+  `profundidad` decimal(4,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- 4. TABLAS DE OPERACIÓN (Turnos e Historial)
 -- --------------------------------------------------------
 
-CREATE TABLE IF NOT EXISTS `turno` (
-  `idTurno` int(11) NOT NULL AUTO_INCREMENT,
+--
+-- Estructura de tabla para la tabla `rol`
+--
+
+CREATE TABLE `rol` (
+  `id_rol` int(11) NOT NULL,
+  `nombre_rol` varchar(50) NOT NULL,
+  `descripcion` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `rol`
+--
+
+INSERT INTO `rol` (`id_rol`, `nombre_rol`, `descripcion`) VALUES
+(1, 'USUARIO', 'Usuario regular del sistema'),
+(2, 'ADMINISTRADOR', 'Administrador del sistema'),
+(3, 'ENTRENADOR', 'Entrenador del gimnasio o piscina');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `sede`
+--
+
+CREATE TABLE `sede` (
+  `idSede` int(11) NOT NULL,
+  `nombre` varchar(150) NOT NULL,
+  `direccion` varchar(255) DEFAULT NULL,
+  `telefono` varchar(50) DEFAULT NULL,
+  `email` varchar(150) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `turno`
+--
+
+CREATE TABLE `turno` (
+  `idTurno` int(11) NOT NULL,
   `fechaHora` datetime NOT NULL,
   `duracionMinutos` int(11) NOT NULL,
   `id_usuario` int(11) NOT NULL,
@@ -119,62 +191,237 @@ CREATE TABLE IF NOT EXISTS `turno` (
   `id_entrenador` int(11) DEFAULT NULL,
   `numero_carril_assigned` int(11) DEFAULT NULL,
   `estado` varchar(20) DEFAULT 'RESERVADO',
-  PRIMARY KEY (`idTurno`),
-  KEY `fk_turno_usuario` (`id_usuario`),
-  KEY `fk_turno_instalacion` (`id_instalacion`),
-  CONSTRAINT `fk_turno_instalacion` FOREIGN KEY (`id_instalacion`) REFERENCES `instalacion` (`idInstalacion`) ON DELETE CASCADE,
-  CONSTRAINT `fk_turno_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`idusuario`) ON DELETE CASCADE
+  `idSede` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-CREATE TABLE IF NOT EXISTS `historial_citas` (
-  `idHistorial` int(11) NOT NULL AUTO_INCREMENT,
-  `id_turno` int(11) NOT NULL,
-  `id_usuario` int(11) NOT NULL,
-  `id_instalacion` int(11) NOT NULL,
-  `estado` varchar(50) DEFAULT NULL,
-  `fecha_evento` datetime DEFAULT current_timestamp(),
-  `detalle` varchar(255) DEFAULT NULL,
-  PRIMARY KEY (`idHistorial`),
-  KEY `fk_historial_turno` (`id_turno`),
-  KEY `fk_historial_usuario` (`id_usuario`),
-  KEY `fk_historial_instalacion` (`id_instalacion`),
-  CONSTRAINT `fk_historial_instalacion` FOREIGN KEY (`id_instalacion`) REFERENCES `instalacion` (`idInstalacion`) ON DELETE CASCADE,
-  CONSTRAINT `fk_historial_turno` FOREIGN KEY (`id_turno`) REFERENCES `turno` (`idTurno`) ON DELETE CASCADE,
-  CONSTRAINT `fk_historial_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`idusuario`) ON DELETE CASCADE
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `usuarios`
+--
+
+CREATE TABLE `usuarios` (
+  `idusuario` int(11) NOT NULL,
+  `id_persona` int(11) NOT NULL,
+  `contraseña` varchar(255) NOT NULL,
+  `categoria` varchar(1) DEFAULT NULL,
+  `esAfiliado` tinyint(1) NOT NULL,
+  `id_rol` int(11) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- 5. INSERCIÓN DE DATOS MAESTROS
--- --------------------------------------------------------
+--
+-- Volcado de datos para la tabla `usuarios`
+--
 
-INSERT IGNORE INTO `rol` (`id_rol`, `nombre_rol`, `descripcion`) VALUES
-(1, 'USUARIO', 'Usuario regular del sistema'),
-(2, 'ADMINISTRADOR', 'Administrador del sistema'),
-(3, 'ENTRENADOR', 'Entrenador del gimnasio o piscina');
+INSERT INTO `usuarios` (`idusuario`, `id_persona`, `contraseña`, `categoria`, `esAfiliado`, `id_rol`) VALUES
+(1, 1, 'admin123', NULL, 0, 2),
+(2, 2, 'user123', 'A', 1, 1);
 
--- --------------------------------------------------------
--- Tabla : sede
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `sede` (
-  `idSede` int(11) NOT NULL AUTO_INCREMENT,
-  `nombre` varchar(150) NOT NULL,
-  `direccion` varchar(255) DEFAULT NULL,
-  `telefono` varchar(50) DEFAULT NULL,
-  `email` varchar(150) DEFAULT NULL,
-  PRIMARY KEY (`idSede`),
-  UNIQUE KEY `uniq_sede_nombre` (`nombre`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+--
+-- Índices para tablas volcadas
+--
 
--- Nueva columna en instalacion para relacionar con sede
-ALTER TABLE `instalacion` ADD COLUMN `idSede` int(11) DEFAULT NULL,
-ADD KEY `fk_instalacion_sede` (`idSede`),
-ADD CONSTRAINT `fk_instalacion_sede` FOREIGN KEY (`idSede`) REFERENCES `sede` (`idSede`) ON DELETE SET NULL;
+--
+-- Indices de la tabla `administrador`
+--
+ALTER TABLE `administrador`
+  ADD PRIMARY KEY (`id_administrador`);
 
--- Nueva columna en turno para relacionar con sede
-ALTER TABLE `turno` ADD COLUMN `idSede` int(11) DEFAULT NULL,
-ADD KEY `fk_turno_sede` (`idSede`),
-ADD CONSTRAINT `fk_turno_sede` FOREIGN KEY (`idSede`) REFERENCES `sede` (`idSede`) ON DELETE SET NULL;
+--
+-- Indices de la tabla `entrenador`
+--
+ALTER TABLE `entrenador`
+  ADD PRIMARY KEY (`idEntrenador`),
+  ADD KEY `fk_entrenador_persona` (`numDocumento`),
+  ADD KEY `fk_entrenador_instalacion` (`idInstalacion`);
 
+--
+-- Indices de la tabla `gimnasio`
+--
+ALTER TABLE `gimnasio`
+  ADD PRIMARY KEY (`idInstalacion`);
 
+--
+-- Indices de la tabla `historial_citas`
+--
+ALTER TABLE `historial_citas`
+  ADD PRIMARY KEY (`idHistorial`),
+  ADD KEY `fk_historial_turno` (`id_turno`),
+  ADD KEY `fk_historial_usuario` (`id_usuario`),
+  ADD KEY `fk_historial_instalacion` (`id_instalacion`);
+
+--
+-- Indices de la tabla `instalacion`
+--
+ALTER TABLE `instalacion`
+  ADD PRIMARY KEY (`idInstalacion`),
+  ADD KEY `fk_instalacion_sede` (`idSede`);
+
+--
+-- Indices de la tabla `pagos`
+--
+ALTER TABLE `pagos`
+  ADD PRIMARY KEY (`idPago`);
+
+--
+-- Indices de la tabla `persona`
+--
+ALTER TABLE `persona`
+  ADD PRIMARY KEY (`id_persona`),
+  ADD UNIQUE KEY `idx_numdocumento` (`numdocumento`);
+
+--
+-- Indices de la tabla `piscina`
+--
+ALTER TABLE `piscina`
+  ADD PRIMARY KEY (`idInstalacion`);
+
+--
+-- Indices de la tabla `rol`
+--
+ALTER TABLE `rol`
+  ADD PRIMARY KEY (`id_rol`),
+  ADD UNIQUE KEY `nombre_rol` (`nombre_rol`);
+
+--
+-- Indices de la tabla `sede`
+--
+ALTER TABLE `sede`
+  ADD PRIMARY KEY (`idSede`),
+  ADD UNIQUE KEY `uniq_sede_nombre` (`nombre`);
+
+--
+-- Indices de la tabla `turno`
+--
+ALTER TABLE `turno`
+  ADD PRIMARY KEY (`idTurno`),
+  ADD KEY `fk_turno_usuario` (`id_usuario`),
+  ADD KEY `fk_turno_instalacion` (`id_instalacion`),
+  ADD KEY `fk_turno_sede` (`idSede`);
+
+--
+-- Indices de la tabla `usuarios`
+--
+ALTER TABLE `usuarios`
+  ADD PRIMARY KEY (`idusuario`),
+  ADD KEY `fk_usuarios_persona` (`id_persona`),
+  ADD KEY `fk_usuarios_rol` (`id_rol`);
+
+--
+-- AUTO_INCREMENT de las tablas volcadas
+--
+
+--
+-- AUTO_INCREMENT de la tabla `entrenador`
+--
+ALTER TABLE `entrenador`
+  MODIFY `idEntrenador` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `historial_citas`
+--
+ALTER TABLE `historial_citas`
+  MODIFY `idHistorial` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `instalacion`
+--
+ALTER TABLE `instalacion`
+  MODIFY `idInstalacion` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `pagos`
+--
+ALTER TABLE `pagos`
+  MODIFY `idPago` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `persona`
+--
+ALTER TABLE `persona`
+  MODIFY `id_persona` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT de la tabla `rol`
+--
+ALTER TABLE `rol`
+  MODIFY `id_rol` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- AUTO_INCREMENT de la tabla `sede`
+--
+ALTER TABLE `sede`
+  MODIFY `idSede` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `turno`
+--
+ALTER TABLE `turno`
+  MODIFY `idTurno` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT de la tabla `usuarios`
+--
+ALTER TABLE `usuarios`
+  MODIFY `idusuario` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- Restricciones para tablas volcadas
+--
+
+--
+-- Filtros para la tabla `administrador`
+--
+ALTER TABLE `administrador`
+  ADD CONSTRAINT `fk_admin_usuario` FOREIGN KEY (`id_administrador`) REFERENCES `usuarios` (`idusuario`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `entrenador`
+--
+ALTER TABLE `entrenador`
+  ADD CONSTRAINT `fk_entrenador_instalacion` FOREIGN KEY (`idInstalacion`) REFERENCES `instalacion` (`idInstalacion`),
+  ADD CONSTRAINT `fk_entrenador_persona` FOREIGN KEY (`numDocumento`) REFERENCES `persona` (`numdocumento`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `gimnasio`
+--
+ALTER TABLE `gimnasio`
+  ADD CONSTRAINT `fk_gimnasio_instalacion` FOREIGN KEY (`idInstalacion`) REFERENCES `instalacion` (`idInstalacion`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `historial_citas`
+--
+ALTER TABLE `historial_citas`
+  ADD CONSTRAINT `fk_historial_instalacion` FOREIGN KEY (`id_instalacion`) REFERENCES `instalacion` (`idInstalacion`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_historial_turno` FOREIGN KEY (`id_turno`) REFERENCES `turno` (`idTurno`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_historial_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`idusuario`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `instalacion`
+--
+ALTER TABLE `instalacion`
+  ADD CONSTRAINT `fk_instalacion_sede` FOREIGN KEY (`idSede`) REFERENCES `sede` (`idSede`) ON DELETE SET NULL;
+
+--
+-- Filtros para la tabla `piscina`
+--
+ALTER TABLE `piscina`
+  ADD CONSTRAINT `fk_piscina_instalacion` FOREIGN KEY (`idInstalacion`) REFERENCES `instalacion` (`idInstalacion`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `turno`
+--
+ALTER TABLE `turno`
+  ADD CONSTRAINT `fk_turno_instalacion` FOREIGN KEY (`id_instalacion`) REFERENCES `instalacion` (`idInstalacion`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_turno_sede` FOREIGN KEY (`idSede`) REFERENCES `sede` (`idSede`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_turno_usuario` FOREIGN KEY (`id_usuario`) REFERENCES `usuarios` (`idusuario`) ON DELETE CASCADE;
+
+--
+-- Filtros para la tabla `usuarios`
+--
+ALTER TABLE `usuarios`
+  ADD CONSTRAINT `fk_usuarios_persona` FOREIGN KEY (`id_persona`) REFERENCES `persona` (`id_persona`) ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_usuarios_rol` FOREIGN KEY (`id_rol`) REFERENCES `rol` (`id_rol`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
