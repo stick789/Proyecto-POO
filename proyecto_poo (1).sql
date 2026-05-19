@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS `pagos` (
 CREATE TABLE IF NOT EXISTS `usuarios` (
   `idusuario` int(11) NOT NULL AUTO_INCREMENT,
   `id_persona` int(11) NOT NULL,
-  `contrasena` varchar(255) NOT NULL,
+  `contraseña` varchar(255) NOT NULL,
   `categoria` varchar(1) DEFAULT NULL,
   `esAfiliado` tinyint(1) NOT NULL,
   `id_rol` int(11) NOT NULL DEFAULT 1,
@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS `usuarios` (
 
 CREATE TABLE IF NOT EXISTS `administrador` (
   `id_administrador` int(11) NOT NULL,
-  `contrasena_administrador` varchar(255) NOT NULL,
+  `contraseña_administrador` varchar(255) NOT NULL,
   PRIMARY KEY (`id_administrador`),
   CONSTRAINT `fk_admin_usuario` FOREIGN KEY (`id_administrador`) REFERENCES `usuarios` (`idusuario`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
