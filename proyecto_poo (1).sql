@@ -174,7 +174,10 @@ ALTER TABLE `turno` ADD COLUMN `idSede` int(11) DEFAULT NULL,
 ADD KEY `fk_turno_sede` (`idSede`),
 ADD CONSTRAINT `fk_turno_sede` FOREIGN KEY (`idSede`) REFERENCES `sede` (`idSede`) ON DELETE SET NULL;
 
-
+-- Nuevas columnas para pagos
+ALTER TABLE `pagos` 
+ADD COLUMN epayco_session_id varchar(255) DEFAULT NULL,
+ADD COLUMN epayco_ref_payco varchar(255) DEFAULT NULL,
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
