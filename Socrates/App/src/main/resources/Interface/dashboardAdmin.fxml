@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.geometry.Insets?>
+
+<BorderPane prefWidth="1280" prefHeight="800"
+            xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="socratesGui.Dashboardadmincontroller">
+
+    <!-- ═══════════════════ LEFT SIDEBAR ═══════════════════ -->
+    <left>
+        <VBox prefWidth="200" style="-fx-background-color: #1a1a2e;">
+
+            <!-- Header -->
+            <Label text="SÓCRATES"
+                   style="-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: white; -fx-padding: 20;"/>
+
+            <!-- Info Admin -->
+            <VBox>
+                <padding><Insets top="0" right="20" bottom="20" left="20"/></padding>
+                <Label fx:id="lblNombreAdmin"
+                       style="-fx-text-fill: white; -fx-font-size: 14;"/>
+                <Label fx:id="lblRolAdmin"
+                       style="-fx-text-fill: #a0a0c0; -fx-font-size: 12;"/>
+            </VBox>
+
+            <!-- Nav Buttons -->
+            <VBox spacing="5">
+                <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+
+                <Button fx:id="btnNavInicio"       onAction="#onInicio"        text="Inicio"
+                        prefWidth="180" alignment="CENTER_LEFT"
+                        style="-fx-background-color: transparent; -fx-text-fill: #a0a0c0; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
+                <Button fx:id="btnNavUsuarios"     onAction="#onUsuarios"      text="Usuarios"
+                        prefWidth="180" alignment="CENTER_LEFT"
+                        style="-fx-background-color: transparent; -fx-text-fill: #a0a0c0; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
+                <Button fx:id="btnNavTurnos"       onAction="#onTurnos"        text="Turnos"
+                        prefWidth="180" alignment="CENTER_LEFT"
+                        style="-fx-background-color: transparent; -fx-text-fill: #a0a0c0; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
+                <Button fx:id="btnNavInstalaciones" onAction="#onInstalaciones" text="Instalaciones"
+                        prefWidth="180" alignment="CENTER_LEFT"
+                        style="-fx-background-color: transparent; -fx-text-fill: #a0a0c0; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
+                <Button fx:id="btnNavPagos"        onAction="#onPagos"         text="Pagos"
+                        prefWidth="180" alignment="CENTER_LEFT"
+                        style="-fx-background-color: transparent; -fx-text-fill: #a0a0c0; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
+                <Button fx:id="btnNavEntrenadores" onAction="#onEntrenadores"  text="Entrenadores"
+                        prefWidth="180" alignment="CENTER_LEFT"
+                        style="-fx-background-color: transparent; -fx-text-fill: #a0a0c0; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
+                <Button fx:id="btnNavSedes"        onAction="#onSedes"         text="Sedes"
+                        prefWidth="180" alignment="CENTER_LEFT"
+                        style="-fx-background-color: transparent; -fx-text-fill: #a0a0c0; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
+            </VBox>
+
+            <!-- Spacer -->
+            <VBox VBox.vgrow="ALWAYS"/>
+
+            <!-- Logout -->
+            <Button fx:id="btnLogout" onAction="#onLogout" text="Cerrar Sesión"
+                    prefWidth="180"
+                    style="-fx-background-color: #e94560; -fx-text-fill: white; -fx-padding: 12 20; -fx-cursor: hand;">
+                <VBox.margin><Insets bottom="20" left="10" right="10"/></VBox.margin>
+            </Button>
+        </VBox>
+    </left>
+
+    <!-- ═══════════════════ CENTER CONTENT ═══════════════════ -->
+    <center>
+        <VBox style="-fx-background-color: #f4f6f9;" spacing="16">
+            <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+
+            <!-- Header HBox -->
+            <HBox alignment="CENTER_LEFT">
+                <Label fx:id="lblSeccion" text="Inicio"
+                       style="-fx-font-size: 24; -fx-font-weight: bold;"/>
+                <HBox HBox.hgrow="ALWAYS"/>
+                <Label fx:id="lblFecha"
+                       style="-fx-font-size: 12; -fx-text-fill: gray;"/>
+            </HBox>
+
+            <!-- Panels Container -->
+            <ScrollPane VBox.vgrow="ALWAYS" fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent;">
+                <VBox spacing="16">
+                    <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>
+
+                    <!-- ── PANEL INICIO ── -->
+                    <VBox fx:id="panelInicio" visible="true" managed="true" spacing="20">
+                        <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+                        <HBox spacing="20">
+                            <!-- Tarjeta Total Usuarios -->
+                            <VBox spacing="5" alignment="CENTER"
+                                  style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2); -fx-padding: 20;"
+                                  HBox.hgrow="ALWAYS">
+                                <Label text="Total Usuarios" style="-fx-font-size: 13; -fx-text-fill: gray;"/>
+                                <Label fx:id="lblTotalUsuarios" text="0"
+                                       style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #e94560;"/>
+                            </VBox>
+                            <!-- Tarjeta Total Turnos -->
+                            <VBox spacing="5" alignment="CENTER"
+                                  style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2); -fx-padding: 20;"
+                                  HBox.hgrow="ALWAYS">
+                                <Label text="Total Turnos" style="-fx-font-size: 13; -fx-text-fill: gray;"/>
+                                <Label fx:id="lblTotalTurnos" text="0"
+                                       style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #e94560;"/>
+                            </VBox>
+                            <!-- Tarjeta Turnos Activos -->
+                            <VBox spacing="5" alignment="CENTER"
+                                  style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2); -fx-padding: 20;"
+                                  HBox.hgrow="ALWAYS">
+                                <Label text="Turnos Activos" style="-fx-font-size: 13; -fx-text-fill: gray;"/>
+                                <Label fx:id="lblTurnosActivos" text="0"
+                                       style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #e94560;"/>
+                            </VBox>
+                            <!-- Tarjeta Total Entrenadores -->
+                            <VBox spacing="5" alignment="CENTER"
+                                  style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2); -fx-padding: 20;"
+                                  HBox.hgrow="ALWAYS">
+                                <Label text="Total Entrenadores" style="-fx-font-size: 13; -fx-text-fill: gray;"/>
+                                <Label fx:id="lblTotalEntrenadores" text="0"
+                                       style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #e94560;"/>
+                            </VBox>
+                        </HBox>
+                    </VBox>
+
+                    <!-- ── PANEL USUARIOS ── -->
+                    <VBox fx:id="panelUsuarios" visible="false" managed="false" spacing="10"
+                          style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2); -fx-padding: 20;">
+                        <TableView fx:id="tablaUsuarios" VBox.vgrow="ALWAYS" prefHeight="500">
+                            <columns>
+                                <TableColumn fx:id="colUsuarioId"        text="ID"        prefWidth="70"/>
+                                <TableColumn fx:id="colUsuarioNombre"    text="Nombre"    prefWidth="160"/>
+                                <TableColumn fx:id="colUsuarioEmail"     text="Email"     prefWidth="180"/>
+                                <TableColumn fx:id="colUsuarioDocumento" text="Documento" prefWidth="130"/>
+                                <TableColumn fx:id="colUsuarioRol"       text="Rol"       prefWidth="110"/>
+                                <TableColumn fx:id="colUsuarioCategoria" text="Categoría" prefWidth="110"/>
+                            </columns>
+                        </TableView>
+                        <Label fx:id="lblMsgUsuarios" style="-fx-text-fill: #e94560; -fx-font-size: 12;"/>
+                    </VBox>
+
+                    <!-- ── PANEL TURNOS ── -->
+                    <VBox fx:id="panelTurnos" visible="false" managed="false" spacing="10"
+                          style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2); -fx-padding: 20;">
+                        <TableView fx:id="tablaTurnos" VBox.vgrow="ALWAYS" prefHeight="500">
+                            <columns>
+                                <TableColumn fx:id="colTurnoId"          text="ID"          prefWidth="55"/>
+                                <TableColumn fx:id="colTurnoFecha"       text="Fecha"       prefWidth="140"/>
+                                <TableColumn fx:id="colTurnoDuracion"    text="Duración"    prefWidth="80"/>
+                                <TableColumn fx:id="colTurnoInstalacion" text="Instalación" prefWidth="130"/>
+                                <TableColumn fx:id="colTurnoCapacidad"   text="Capacidad"   prefWidth="90"/>
+                                <TableColumn fx:id="colTurnoEstado"      text="Estado"      prefWidth="100"/>
+                                <TableColumn fx:id="colTurnoUsuario"     text="Usuario"     prefWidth="155"/>
+                            </columns>
+                        </TableView>
+                        <Label fx:id="lblMsgTurnos" style="-fx-text-fill: #e94560; -fx-font-size: 12;"/>
+                    </VBox>
+
+                    <!-- ── PANEL INSTALACIONES ── -->
+                    <VBox fx:id="panelInstalaciones" visible="false" managed="false" spacing="10"
+                          style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2); -fx-padding: 20;">
+                        <TableView fx:id="tablaInstalaciones" VBox.vgrow="ALWAYS" prefHeight="500">
+                            <columns>
+                                <TableColumn fx:id="colInstalacionId"        text="ID"        prefWidth="60"/>
+                                <TableColumn fx:id="colInstalacionTipo"      text="Tipo"      prefWidth="150"/>
+                                <TableColumn fx:id="colInstalacionCapacidad" text="Capacidad" prefWidth="90"/>
+                                <TableColumn fx:id="colInstalacionAforo"     text="Aforo Disp." prefWidth="100"/>
+                                <TableColumn fx:id="colInstalacionTipoEsp"   text="Subtipo"   prefWidth="150"/>
+                            </columns>
+                        </TableView>
+                        <Label fx:id="lblMsgInstalaciones" style="-fx-text-fill: #e94560; -fx-font-size: 12;"/>
+                    </VBox>
+
+                    <!-- ── PANEL PAGOS ── -->
+                    <VBox fx:id="panelPagos" visible="false" managed="false" spacing="10"
+                          style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2); -fx-padding: 20;">
+                        <TableView fx:id="tablaPagos" VBox.vgrow="ALWAYS" prefHeight="500">
+                            <columns>
+                                <TableColumn fx:id="colPagoId"      text="ID"      prefWidth="60"/>
+                                <TableColumn fx:id="colPagoTurno"   text="Turno"   prefWidth="70"/>
+                                <TableColumn fx:id="colPagoUsuario" text="Usuario" prefWidth="100"/>
+                                <TableColumn fx:id="colPagoMonto"   text="Monto"   prefWidth="100"/>
+                                <TableColumn fx:id="colPagoMetodo"  text="Método"  prefWidth="110"/>
+                                <TableColumn fx:id="colPagoEstado"  text="Estado"  prefWidth="110"/>
+                                <TableColumn fx:id="colPagoFecha"   text="Fecha"   prefWidth="200"/>
+                            </columns>
+                        </TableView>
+                        <Label fx:id="lblMsgPagos" style="-fx-text-fill: #e94560; -fx-font-size: 12;"/>
+                    </VBox>
+
+                    <!-- ── PANEL ENTRENADORES ── -->
+                    <VBox fx:id="panelEntrenadores" visible="false" managed="false" spacing="10"
+                          style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2); -fx-padding: 20;">
+                        <TableView fx:id="tablaEntrenadores" VBox.vgrow="ALWAYS" prefHeight="500">
+                            <columns>
+                                <TableColumn fx:id="colEntrenadorId"           text="ID"           prefWidth="60"/>
+                                <TableColumn fx:id="colEntrenadorNombre"       text="Nombre"       prefWidth="200"/>
+                                <TableColumn fx:id="colEntrenadorEspecialidad" text="Especialidad" prefWidth="200"/>
+                                <TableColumn fx:id="colEntrenadorEmail"        text="Email"        prefWidth="200"/>
+                            </columns>
+                        </TableView>
+                        <Label fx:id="lblMsgEntrenadores" style="-fx-text-fill: #e94560; -fx-font-size: 12;"/>
+                    </VBox>
+
+                    <!-- ── PANEL SEDES ── -->
+                    <VBox fx:id="panelSedes" visible="false" managed="false" spacing="10"
+                          style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 8, 0, 0, 2); -fx-padding: 20;">
+                        <TableView fx:id="tablaSedesAdmin" VBox.vgrow="ALWAYS" prefHeight="500">
+                            <columns>
+                                <TableColumn fx:id="colSedeId"        text="ID"        prefWidth="55"/>
+                                <TableColumn fx:id="colSedeNombre"    text="Nombre"    prefWidth="170"/>
+                                <TableColumn fx:id="colSedeDireccion" text="Dirección" prefWidth="210"/>
+                                <TableColumn fx:id="colSedeTelefono"  text="Teléfono"  prefWidth="120"/>
+                                <TableColumn fx:id="colSedeEmail"     text="Email"     prefWidth="195"/>
+                            </columns>
+                        </TableView>
+                        <Label fx:id="lblMsgSedes" style="-fx-text-fill: #e94560; -fx-font-size: 12;"/>
+                    </VBox>
+
+                </VBox>
+            </ScrollPane>
+        </VBox>
+    </center>
+</BorderPane>

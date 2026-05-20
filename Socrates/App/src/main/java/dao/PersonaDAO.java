@@ -48,7 +48,7 @@ public class PersonaDAO implements IPersonaDAO {
     private static final String SQL_SELECT_BASE =
             "SELECT u.idusuario, p.nombre, p.email, p.tipodocumento, p.numdocumento, " +
             "       u.contraseña, u.categoria, u.esAfiliado, r.nombre_rol, " +
-            "       a.contrasena_administrador, " +
+            "       a.contraseña_administrador, " +
             "       e.especialidad " +             // ← nuevo: para instanciar Entrenador
             "FROM usuarios u " +
             "JOIN  persona p   ON u.id_persona         = p.id_persona " +
@@ -166,12 +166,12 @@ public class PersonaDAO implements IPersonaDAO {
     }
 
     @Override
-    public void actualizarContrasena(int idPersona, String nuevaContrasena) {
+    public void actualizarContraseña(int idPersona, String nuevaContraseña) {
         Connection con = conexion.conectar();
         if (con == null) return;
 
         try (PreparedStatement ps = con.prepareStatement(SQL_UPDATE_CONTRASENA)) {
-            ps.setString(1, nuevaContrasena);
+            ps.setString(1, nuevaContraseña);
             ps.setInt(2, idPersona);
             ps.executeUpdate();
         } catch (SQLException e) {
@@ -346,7 +346,7 @@ public class PersonaDAO implements IPersonaDAO {
                     rs.getInt("idusuario"),
                     rs.getString("nombre"),
                     rs.getString("email"),
-                    rs.getString("contrasena_administrador"),
+                    rs.getString("contraseña_administrador"),
                     rs.getString("tipodocumento"),
                     rs.getString("numdocumento")
             );

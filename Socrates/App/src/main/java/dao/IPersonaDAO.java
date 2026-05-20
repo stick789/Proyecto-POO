@@ -63,7 +63,7 @@ public interface IPersonaDAO {
      * Actualiza únicamente la contraseña almacenada (ya hasheada).
      * Se usa para migración de hashes legacy SHA-256 → PBKDF2.
      */
-    void actualizarContrasena(int idPersona, String nuevaContrasena);
+    void actualizarContraseña(int idPersona, String nuevaContrasena);
 
     /** Cambia el rol de una persona en la tabla {@code usuarios}. */
     void actualizarRol(int idPersona, String nombreRol);

@@ -18,6 +18,12 @@ import javafx.stage.Stage;
  *   2. Si la conexión falla  → se muestra el error con detalle → la app se cierra.
  *   3. Si la conexión es exitosa → se muestra "Establecimiento de Conexión: Satisfactorio"
  *      → se carga el login (primary.fxml).
+ *
+ * PANTALLAS DISPONIBLES:
+ *   primary          → login (640 × 730, no redimensionable)
+ *   secondary        → acceso Compensar (640 × 730, no redimensionable)
+ *   dashboardAdmin   → panel administrador (1280 × 800, redimensionable)
+ *   dashboardUsuario → panel usuario       (1280 × 800, redimensionable)
  */
 public class App extends Application {
 
@@ -50,21 +56,33 @@ public class App extends Application {
 
     /**
      * Cambia la pantalla activa reemplazando el root de la escena.
+     *
+     * Ajusta el tamaño de la ventana según la pantalla destino:
+     *   - dashboardAdmin / dashboardUsuario → 1280 × 800, redimensionable
+     *   - cualquier otra pantalla           →  640 × 730, fija
      */
     public static void setRoot(String fxml) throws IOException {
-        scene.setRoot(loadFXML(fxml));
-        if ("dashboard".equals(fxml)) {
-            primaryStage.setWidth(900);
-            primaryStage.setHeight(600);
-            primaryStage.setResizable(true);
-            primaryStage.centerOnScreen();
-        } else {
-            primaryStage.setWidth(640);
-            primaryStage.setHeight(730);
-            primaryStage.setResizable(false);
-            primaryStage.centerOnScreen();
-        }
+    Parent root = loadFXML(fxml);
+
+    boolean esDashboard = "dashboardAdmin".equals(fxml)
+                       || "dashboardUsuario".equals(fxml);
+
+    if (esDashboard) {
+        scene = new Scene(root, 1280, 800);
+        primaryStage.setScene(scene);
+        primaryStage.setWidth(1280);
+        primaryStage.setHeight(800);
+        primaryStage.setResizable(true);
+    } else {
+        scene = new Scene(root, 640, 730);
+        primaryStage.setScene(scene);
+        primaryStage.setWidth(640);
+        primaryStage.setHeight(730);
+        primaryStage.setResizable(false);
     }
+
+    primaryStage.centerOnScreen();
+}
 
     static Parent loadFXML(String fxml) throws IOException {
         FXMLLoader loader = new FXMLLoader(App.class.getResource("/Interface/" + fxml + ".fxml"));

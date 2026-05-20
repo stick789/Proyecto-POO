@@ -93,7 +93,7 @@ public class PersonaControl {
                 // Migración automática → próximo login ya usará PBKDF2
                 String nuevoHash = generarHashPBKDF2(clave);
                 if (nuevoHash != null) {
-                    datos.actualizarContrasena(persona.getId(), nuevoHash);
+                    datos.actualizarContraseña(persona.getId(), nuevoHash);
                     LOG.log(Level.INFO, "Hash migrado a PBKDF2 para persona id={0}", persona.getId());
                 }
             }
