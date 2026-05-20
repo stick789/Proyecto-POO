@@ -36,6 +36,8 @@ como backup.
 
 `En el caso de los pagos es lo mismo, en ambos demo y db no se colocaron datos asi que primero se necesita el sistema de pagos para que guarden registros`
 
+`Para acceder a los datos, les recomiendo que borren la nueva base de datos y apliquen la que le hice commit para evitar errores de version y correlación`
+
 ---
 
 ## 4. A Futuro
