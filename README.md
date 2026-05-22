@@ -22,3 +22,92 @@
 > Revisar la especialización a futuro para entrenadores logrando así su uso según la disponibilidad de la instalación sin necesidad de que estos lleguen a quedar bloqueados en una sola área.
 >
 > Asignar ID a las instalaciones para el uso de los entrenadores.
+
+# Avances Importantes
+
+> [!NOTE]
+>La pasarela de pagos ya quedo funcional, el problema es que la public y private key sepueden ver dentro del proyecto, pero eso se solucionara a futuro (no se como).
+
+> [!IMPORTANT]
+> Para probar la pasarela puse que el id determiado del turno sea turno 1, pronto habra que cambiar eso, por lo que todavia no tenemos el metodo de agendar turnos, el archivo que use para iniciar la pasarle de pagos por si sola no la publique para evitar confuciones
+> Abajo dejo el codigo para el main a utilizar por si quieren probar la pasarlla de pagos
+
+## Pasarela de Pagos Launcher
+
+Clase temporal para lanzar la vista de la pasarela de pagos.
+
+<details>
+<summary>📄 Ver código completo (PasarelaPagosLauncher.java)</summary>
+
+```java
+package socratesGui;
+
+import java.io.IOException;
+import java.util.Optional;
+
+import dao.EntrenadorDAO;
+import dao.InstalacionDAO;
+import dao.PersonaDAO;
+import dao.TurnoDAO;
+import database.Conexion;
+import entidades.Turno;
+import javafx.application.Application;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Scene;
+import javafx.stage.Stage;
+
+/**
+ * Launcher temporal para abrir solo la vista de pasarela de pagos.
+ */
+public class PasarelaPagosLauncher extends Application {
+
+    @Override
+    public void start(Stage stage) throws IOException {
+        try {
+            Conexion.getInstancia().conectarConFeedback();
+        } catch (RuntimeException e) {
+            throw e;
+        }
+
+        FXMLLoader loader = new FXMLLoader(
+            PasarelaPagosLauncher.class.getResource("/Interface/pasarelaPagos.fxml")
+        );
+
+        Scene scene = new Scene(loader.load(), 700, 550);
+        PasarelaPagosController controller = loader.getController();
+        controller.setHostServices(getHostServices());
+
+        // Cargar turno por parámetro (opcional)
+        String turnoIdParam = System.getProperty("turnoId");
+        if (turnoIdParam == null || turnoIdParam.isBlank()) {
+            turnoIdParam = System.getenv("TURNOID");
+        }
+
+        if (turnoIdParam != null && !turnoIdParam.isBlank()) {
+            try {
+                int turnoId = Integer.parseInt(turnoIdParam.trim());
+                TurnoDAO turnoDAO = new TurnoDAO(new PersonaDAO(), new InstalacionDAO(), new EntrenadorDAO());
+                Optional<Turno> turnoOpt = turnoDAO.buscarPorId(turnoId);
+                
+                if (turnoOpt.isPresent()) {
+                    controller.setTurno(turnoOpt.get());
+                } else {
+                    Turno turno = new Turno();
+                    turno.setIdTurno(turnoId);
+                    controller.setTurno(turno);
+                }
+            } catch (Exception e) {
+                System.err.println("No se pudo cargar el turno: " + e.getMessage());
+            }
+        }
+
+        stage.setTitle("Pasarela ePayco (Prueba)");
+        stage.setResizable(false);
+        stage.setScene(scene);
+        stage.show();
+    }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+}
