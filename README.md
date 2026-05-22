@@ -29,7 +29,7 @@
 >La pasarela de pagos ya quedo funcional, el problema es que la public y private key sepueden ver dentro del proyecto, pero eso se solucionara a futuro (no se como).
 
 > [!IMPORTANT]
-> Para probar la pasarela puse que el id determiado del turno sea turno 1, pronto habra que cambiar eso, por lo que todavia no tenemos el metodo de agendar turnos, el archivo que use para iniciar la pasarla de pagos por si sola, no la commitee para evitar confuciones.
+> Para probar la pasarela puse que un id predeterminado de forma temporal para que sea el  1, pronto habra que cambiar eso, por lo que todavia no tenemos el metodo de agendar turnos, el archivo que use para iniciar la pasarla de pagos por si sola, no la commitee para evitar confuciones.
 > Abajo dejo el codigo para el main a utilizar por si quieren probar la pasarela de pagos
 
 ## Pasarela de Pagos Launcher
