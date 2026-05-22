@@ -30,7 +30,7 @@
 
 > [!IMPORTANT]
 > Para probar la pasarela puse que el id determiado del turno sea turno 1, pronto habra que cambiar eso, por lo que todavia no tenemos el metodo de agendar turnos, el archivo que use para iniciar la pasarla de pagos por si sola, no la commitee para evitar confuciones.
-> Abajo dejo el codigo para el main a utilizar por si quieren probar la pasarlla de pagos
+> Abajo dejo el codigo para el main a utilizar por si quieren probar la pasarela de pagos
 
 ## Pasarela de Pagos Launcher
 
