@@ -8,10 +8,13 @@ import java.util.logging.Logger;
 
 import dao.IPagoDAO;
 import dao.ITurnoDAO;
+import dao.PagoDAO;
+import dao.PagosOnlineDAO;
 import entidades.Pago;
 import entidades.Persona;
 import entidades.Turno;
 import entidades.Usuario;
+import util.ConfigLoader;
 
 /**
  * PagoControl — Lógica de negocio para el módulo de pagos.
@@ -35,13 +38,25 @@ public class PagoControl {
     private static final Logger LOG = Logger.getLogger(PagoControl.class.getName());
 
     private final IPagoDAO pagoDAO;
+    private PagosOnlineDAO pagosOnlineDAO;
     private final ITurnoDAO turnoDAO;
     private final PersonaControl personaControl;
 
-    public PagoControl(IPagoDAO pagoDAO, ITurnoDAO turnoDAO, PersonaControl personaControl) {
+    public PagoControl(PagoDAO pagoDAO, PagosOnlineDAO pagosOnlineDAO, ITurnoDAO turnoDAO, PersonaControl personaControl) {
         this.pagoDAO        = pagoDAO;
         this.turnoDAO       = turnoDAO;
         this.personaControl = personaControl;
+// Lee las llaves de ePayco desde config.properties para inicializar PagosOnlineDAO
+        if (pagosOnlineDAO != null) {
+            this.pagosOnlineDAO = pagosOnlineDAO;
+        } else {
+            String publicKey = ConfigLoader.get("epayco.publicKey");
+            String privateKey = ConfigLoader.get("epayco.privateKey");
+            if (publicKey == null || privateKey == null) {
+                throw new IllegalStateException("Faltan las llaves de ePayco en config.properties (epayco.publicKey / epayco.privateKey)");
+            }
+            this.pagosOnlineDAO = new PagosOnlineDAO(publicKey, privateKey, pagoDAO);
+        }
     }
 
     // ================================================================= REGISTRAR PAGO
@@ -225,4 +240,14 @@ public class PagoControl {
         personaControl.validarOperacion(actor, PersonaControl.OperacionPersona.GESTIONAR_PAGOS);
         return pagoDAO.buscarPorId(idPago);
     }
+
+ // método para iniciar pago con tarjeta
+    public String iniciarPagoConTarjeta(int idTurno, double montoTotal, String descripcion) throws Exception {
+        return pagosOnlineDAO.iniciarPagoConTarjeta(idTurno, montoTotal, descripcion);
+    }
+    // Método para verificar estado de un pago
+    public String verificarEstadoPago(int idPago) throws Exception {
+        return pagosOnlineDAO.verificarEstado(idPago);
+    }
+
 }

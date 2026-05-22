@@ -4,6 +4,10 @@ module socratesGui {
     requires javafx.controls;
     requires javafx.fxml;
     requires java.logging;
+    requires java.net.http;
+    requires jdk.httpserver;
+    requires com.fasterxml.jackson.databind;
+    requires com.fasterxml.jackson.core;
     requires mysql.connector.j;
 
     // requires transitive: tipos de estos módulos aparecen en la API pública

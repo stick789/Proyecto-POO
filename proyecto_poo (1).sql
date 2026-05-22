@@ -94,6 +94,13 @@ CREATE TABLE `instalacion` (
   `idSede` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Volcado de datos para la tabla `instalacion`
+--
+
+INSERT INTO `instalacion` (`idInstalacion`, `tipo`, `capacidadMaxima`, `aforoActual`, `nombre`, `idSede`) VALUES
+(1, 'PISCINA', 40, 0, 'Piscina Principal', 1);
+
 -- --------------------------------------------------------
 
 --
@@ -108,8 +115,18 @@ CREATE TABLE `pagos` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
-
+--Añadir columnas fundamentales
 --
+USE proyecto_poo;
+
+ALTER TABLE pagos
+  ADD COLUMN id_turno INT(11) DEFAULT NULL,
+  ADD COLUMN id_usuario INT(11) DEFAULT NULL,
+  ADD COLUMN fechaPago DATETIME DEFAULT CURRENT_TIMESTAMP;
+
+ALTER TABLE pagos
+  ADD CONSTRAINT fk_pagos_turno FOREIGN KEY (id_turno) REFERENCES turno(idTurno) ON DELETE SET NULL,
+  ADD CONSTRAINT fk_pagos_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(idusuario) ON DELETE SET NULL;
 -- Estructura de tabla para la tabla `persona`
 --
 
@@ -176,6 +193,13 @@ CREATE TABLE `sede` (
   `email` varchar(150) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Volcado de datos para la tabla `sede`
+--
+
+INSERT INTO `sede` (`idSede`, `nombre`, `direccion`, `telefono`, `email`) VALUES
+(1, 'CUR', 'Calle 100 #10-20', '3000000000', 'sede@test.com');
+
 -- --------------------------------------------------------
 
 --
@@ -193,6 +217,13 @@ CREATE TABLE `turno` (
   `estado` varchar(20) DEFAULT 'RESERVADO',
   `idSede` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `turno`
+--
+
+INSERT INTO `turno` (`idTurno`, `fechaHora`, `duracionMinutos`, `id_usuario`, `id_instalacion`, `id_entrenador`, `numero_carril_assigned`, `estado`, `idSede`) VALUES
+(1, '2026-05-21 10:00:00', 60, 2, 1, NULL, 1, 'RESERVADO', 1);
 
 -- --------------------------------------------------------
 
@@ -422,15 +453,11 @@ ALTER TABLE `turno`
 ALTER TABLE `usuarios`
   ADD CONSTRAINT `fk_usuarios_persona` FOREIGN KEY (`id_persona`) REFERENCES `persona` (`id_persona`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_usuarios_rol` FOREIGN KEY (`id_rol`) REFERENCES `rol` (`id_rol`);
--- Nueva columna en turno para relacionar con sede
-ALTER TABLE `turno` ADD COLUMN `idSede` int(11) DEFAULT NULL,
-ADD KEY `fk_turno_sede` (`idSede`),
-ADD CONSTRAINT `fk_turno_sede` FOREIGN KEY (`idSede`) REFERENCES `sede` (`idSede`) ON DELETE SET NULL;
-
 -- Nuevas columnas para pagos
 ALTER TABLE `pagos` 
 ADD COLUMN epayco_session_id varchar(255) DEFAULT NULL,
-ADD COLUMN epayco_ref_payco varchar(255) DEFAULT NULL,
+ADD COLUMN epayco_ref_payco varchar(255) DEFAULT NULL;
+
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

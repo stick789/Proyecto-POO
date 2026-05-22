@@ -1,6 +1,12 @@
 package dao;
 
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,7 +57,7 @@ public class TurnoDAO implements ITurnoDAO {
 
     private static final String SQL_SELECT_BASE =
             "SELECT idTurno, fechaHora, duracionMinutos, id_usuario, " +
-            "       id_instalacion, numero_carril_asignado, estado, id_entrenador " +
+            "       id_instalacion, numero_carril_assigned, estado, id_entrenador " +
             "FROM turno ";
 
     private static final String SQL_SELECT_POR_ID     = SQL_SELECT_BASE + "WHERE idTurno = ?";
@@ -218,7 +224,7 @@ public class TurnoDAO implements ITurnoDAO {
         int           idInst       = rs.getInt("id_instalacion");
         String        estado       = rs.getString("estado");
 
-        int     carrilRaw   = rs.getInt("numero_carril_asignado");
+        int     carrilRaw   = rs.getInt("numero_carril_assigned");
         Integer carril      = rs.wasNull() ? null : carrilRaw;
 
         int     idEntRaw    = rs.getInt("id_entrenador");

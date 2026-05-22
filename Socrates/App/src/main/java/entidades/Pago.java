@@ -30,7 +30,8 @@ public class Pago {
     private String         metodoPago;   // "EFECTIVO", "TARJETA", "TRANSFERENCIA"
     private String         estadoPago;
     private LocalDateTime  fechaPago;    // asignado por BD; null al insertar
-
+    private String epaycoSessionId; // ID de sesión de pago Epayco 
+    private String epaycoRefPayco;     // Referencia de pago Epayco 
     // ---------------------------------------------------------------- Constructores
 
     /** Constructor para crear un pago nuevo (antes de persistir). */
@@ -123,5 +124,21 @@ public class Pago {
                " (" + metodoPago + ")" +
                " | Estado: " + estadoPago +
                (fechaPago != null ? " | Fecha: " + fechaPago : "");
+    }
+// -------------------------------- Getters / Setters  para integración con Epayco
+    public String getEpaycoRefPayco() {
+        return epaycoRefPayco;
+    }
+
+    public void setEpaycoRefPayco(String epaycoRefPayco) {
+        this.epaycoRefPayco = epaycoRefPayco;
+    }
+
+    public String getEpaycoSessionId() {
+        return epaycoSessionId;
+    }
+
+    public void setEpaycoSessionId(String epaycoSessionId) {
+        this.epaycoSessionId = epaycoSessionId;
     }
 }

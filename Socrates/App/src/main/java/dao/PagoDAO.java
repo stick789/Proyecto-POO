@@ -177,4 +177,57 @@ public class PagoDAO implements IPagoDAO {
         }
         return lista;
     }
+
+    // Método para registrar un pago y obtener su ID generado
+public int registrarPago(Pago pago) throws SQLException {
+    Connection con = conexion.conectar();
+    if (con == null) throw new SQLException("No se pudo conectar a la base de datos");
+    String sql = "INSERT INTO pagos (id_turno, monto, metodoPago, estadoPago) VALUES (?, ?, ?, ?)";
+    try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        ps.setInt(1, pago.getIdTurno());
+        ps.setBigDecimal(2, pago.getMonto());
+        ps.setString(3, pago.getMetodoPago());
+        ps.setString(4, pago.getEstadoPago());
+        ps.executeUpdate();
+        try (ResultSet rs = ps.getGeneratedKeys()) {
+            if (rs.next()) {
+                int id = rs.getInt(1);
+                pago.setIdPago(id);
+                return id;
+            }
+        }
+        throw new SQLException("No se pudo obtener el ID del pago");
+    } finally {
+        conexion.desconectar();
+    }
+}
+
+// Método para actualizar el session_id de ePayco
+public void actualizarSessionId(int idPago, String sessionId) throws SQLException {
+    Connection con = conexion.conectar();
+    if (con == null) throw new SQLException("No se pudo conectar a la base de datos");
+    String sql = "UPDATE pagos SET epayco_session_id = ? WHERE idPago = ?";
+    try (PreparedStatement ps = con.prepareStatement(sql)) {
+        ps.setString(1, sessionId);
+        ps.setInt(2, idPago);
+        ps.executeUpdate();
+    } finally {
+        conexion.desconectar();
+    }
+}
+
+// Método para actualizar el ref_payco y el estado (cuando llegue la confirmación)
+public void actualizarRefPaycoYEstado(int idPago, String refPayco, String nuevoEstado) throws SQLException {
+    Connection con = conexion.conectar();
+    if (con == null) throw new SQLException("No se pudo conectar a la base de datos");
+    String sql = "UPDATE pagos SET epayco_ref_payco = ?, estadoPago = ? WHERE idPago = ?";
+    try (PreparedStatement ps = con.prepareStatement(sql)) {
+        ps.setString(1, refPayco);
+        ps.setString(2, nuevoEstado);
+        ps.setInt(3, idPago);
+        ps.executeUpdate();
+    } finally {
+        conexion.desconectar();
+    }
+}
 }

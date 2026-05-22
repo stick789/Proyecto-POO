@@ -1,5 +1,7 @@
 # Java compiled classes
 *.class
+PasarelaPagosLauncher.class
+PasarelaPagosLauncher.java
 
 # Log files
 *.log

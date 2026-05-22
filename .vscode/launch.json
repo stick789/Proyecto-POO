@@ -10,6 +10,20 @@
     },
     {
         "type": "java",
+        "name": "App",
+        "request": "launch",
+        "mainClass": "socratesGui.App",
+        "projectName": "ui_admin"
+    },
+    {
+        "type": "java",
+        "name": "PasarelaPagosLauncher",
+        "request": "launch",
+        "mainClass": "socratesGui.PasarelaPagosLauncher",
+        "projectName": "ui_admin"
+    },
+    {
+        "type": "java",
         "name": "MainLogic",
         "request": "launch",
         "mainClass": "socratesGui/negocio.LogicaAdmin.MainLogic",
