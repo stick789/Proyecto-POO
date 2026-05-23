@@ -29,9 +29,15 @@ public class App extends Application {
 
     private static Scene scene;
     private static Stage primaryStage;
+    private static App instance;
+
+    public static javafx.application.HostServices getAppHostServices() {
+        return instance.getHostServices();
+    }
 
     @Override
     public void start(Stage stage) throws IOException {
+        instance = this;
         primaryStage = stage;
         stage.setTitle("Sócrates — Sistema de Gestión Deportiva");
         stage.setResizable(false);

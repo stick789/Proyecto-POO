@@ -46,9 +46,10 @@
 
       <Separator prefWidth="260.0" />
 
-      <!-- Botón continuar (simulado) -->
+      <!-- Botón continuar -->
       <Button mnemonicParsing="false"
               prefHeight="34.0" prefWidth="200.0"
+              onAction="#onContinuarCompensar"
               style="-fx-background-color: #2E6B7A; -fx-text-fill: white;
                      -fx-background-radius: 10; -fx-font-size: 13px; -fx-cursor: hand;"
               text="Continuar con Compensar" />
