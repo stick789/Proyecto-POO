@@ -9,9 +9,14 @@ import entidades.Persona;
 import entidades.Usuario;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
 /**
  * LoginController — Controlador del formulario de login.
@@ -124,6 +129,36 @@ private void onLogin() {
             return claveIngresada.equals(hash);
         }
         return false;
+    }
+
+    /**
+     * Abre el formulario de registro como una ventana independiente (Stage).
+     * Al cerrarla (éxito o cancelación) el login permanece visible.
+     */
+    @FXML
+    private void onRegistrar() {
+        try {
+            FXMLLoader loader = new FXMLLoader(
+                    App.class.getResource("/Interface/registro.fxml"));
+            Parent root = loader.load();
+
+            RegistroController ctrl = loader.getController();
+
+            Stage stageRegistro = new Stage();
+            stageRegistro.setTitle("Crear cuenta — Sócrates");
+            stageRegistro.setScene(new Scene(root, 460, 680));
+            stageRegistro.setResizable(false);
+            Stage loginStage = (Stage) txtEmail.getScene().getWindow();
+            stageRegistro.initOwner(loginStage);
+            stageRegistro.initModality(Modality.WINDOW_MODAL);
+
+            ctrl.setStage(stageRegistro);
+
+            stageRegistro.show();
+
+        } catch (IOException e) {
+            lblError.setText("No se pudo abrir el formulario de registro: " + e.getMessage());
+        }
     }
 
     @FXML

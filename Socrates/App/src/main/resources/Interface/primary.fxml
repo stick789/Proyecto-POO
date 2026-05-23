@@ -91,8 +91,9 @@
 
       <Button mnemonicParsing="false"
               prefHeight="30.0" prefWidth="130.0"
+              onAction="#onRegistrar"
               style="-fx-background-color: #2E6B7A; -fx-text-fill: white;
-                     -fx-background-radius: 10; -fx-font-size: 13px;"
+                     -fx-background-radius: 10; -fx-font-size: 13px; -fx-cursor: hand;"
               text="Registrarse" />
 
     
