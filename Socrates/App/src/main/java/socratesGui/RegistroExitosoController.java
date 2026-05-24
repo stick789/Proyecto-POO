@@ -29,11 +29,19 @@ public class RegistroExitosoController {
         lblUsuario.setText(usuario != null ? usuario : "—");
     }
 
-    // ── Acción del botón ─────────────────────────────────────────────────────
+    private Stage registroStage;
 
-    @FXML
-    private void onAceptar() {
-        Stage stage = (Stage) lblPersona.getScene().getWindow();
-        stage.close();
-    }
+public void setRegistroStage(Stage registroStage) {
+    this.registroStage = registroStage;
 }
+
+@FXML
+private void onAceptar() {
+    // Cerrar ventana de éxito
+    Stage stageExito = (Stage) lblPersona.getScene().getWindow();
+    stageExito.close();
+    // Cerrar ventana de registro
+    if (registroStage != null) {
+        registroStage.close();
+    }
+}}

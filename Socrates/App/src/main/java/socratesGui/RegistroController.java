@@ -157,33 +157,31 @@ public class RegistroController {
      * Al cerrarla, cierra también esta ventana (volviendo al login).
      */
     private void abrirVentanaExito(String persona, String usuario) {
-        try {
-            FXMLLoader loader = new FXMLLoader(
-                    getClass().getResource("/Interface/registroExitoso.fxml"));
-            Parent root = loader.load();
+    try {
+        FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("/Interface/registroExitoso.fxml"));
+        Parent root = loader.load();
 
-            RegistroExitosoController ctrl = loader.getController();
-            ctrl.setDatos(persona, usuario);
+        RegistroExitosoController ctrl = loader.getController();
+        ctrl.setDatos(persona, usuario);
+        ctrl.setRegistroStage(miStage); // ← pasa referencia al stage de registro
 
-            Stage stageExito = new Stage();
-            stageExito.setTitle("Registro exitoso — Sócrates");
-            stageExito.setScene(new Scene(root, 420, 320));
-            stageExito.setResizable(false);
-            // Modal sobre la ventana de registro
-            stageExito.initModality(Modality.WINDOW_MODAL);
-            if (miStage != null) {
-                stageExito.initOwner(miStage);
-            }
-
-            // Al cerrar la ventana de éxito, cerramos también la de registro
-            stageExito.setOnHidden(e -> cerrarVentana());
-
-            stageExito.showAndWait();
-
-        } catch (Exception e) {
-            lblError.setText("Error al abrir la ventana de confirmación: " + e.getMessage());
+        Stage stageExito = new Stage();
+        stageExito.setTitle("Registro exitoso — Sócrates");
+        stageExito.setScene(new Scene(root, 420, 320));
+        stageExito.setResizable(false);
+        stageExito.initModality(Modality.WINDOW_MODAL);
+        if (miStage != null) {
+            stageExito.initOwner(miStage);
         }
+
+        // SIN setOnHidden — el cierre lo maneja RegistroExitosoController
+        stageExito.show();
+
+    } catch (Exception e) {
+        lblError.setText("Error al abrir la ventana de confirmación: " + e.getMessage());
     }
+}
 
     private void cerrarVentana() {
         if (miStage != null) {

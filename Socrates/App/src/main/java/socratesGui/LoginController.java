@@ -1,10 +1,9 @@
 package socratesGui;
 
 import java.io.IOException;
-import java.util.Optional;
-
 import dao.PersonaDAO;
 import entidades.Administrador;
+import negocio.PersonaControl;
 import entidades.Persona;
 import entidades.Usuario;
 import javafx.application.Platform;
@@ -17,6 +16,7 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.concurrent.Task;
 
 /**
  * LoginController — Controlador del formulario de login.
@@ -44,7 +44,6 @@ public class LoginController {
     @FXML
 private void onLogin() {
     lblError.setText("");
-
     String email = txtEmail.getText().trim();
     String clave  = txtContrasena.getText();
 
@@ -62,30 +61,35 @@ private void onLogin() {
     }
 
     // ── 2. Login real contra la BD ────────────────────────────
-    try {
-        Optional<Persona> resultado = personaDAO.buscarPorEmail(email);
+    lblError.setText("Iniciando sesión...");
 
-        if (resultado.isEmpty()) {
-            lblError.setText("Correo no registrado.");
-            return;
+    Task<Persona> taskLogin = new Task<>() {
+        @Override
+        protected Persona call() throws Exception {
+            String resultado = new PersonaControl().login(email, clave);
+            if (!resultado.equals("1")) {
+                boolean existe = personaDAO.buscarPorEmail(email).isPresent();
+                throw new Exception(existe ? "Contraseña incorrecta." : "Correo no registrado.");
+            }
+            return personaDAO.buscarPorEmail(email).get();
         }
+    };
 
-        Persona persona = resultado.get();
-
-        if (!verificarClave(persona, clave)) {
-            lblError.setText("Contraseña incorrecta.");
-            txtContrasena.clear();
-            return;
-        }
-
+    taskLogin.setOnSucceeded(e -> {
+        Persona persona = taskLogin.getValue();
         SesionActual.setUsuario(persona);
         navegarSegunRol(persona);
+    });
 
-    } catch (RuntimeException e) {
-    lblError.setText(e.getCause() != null 
-        ? e.getCause().getMessage() 
-        : e.getMessage());
-}
+    taskLogin.setOnFailed(ev -> {
+        String msg = taskLogin.getException().getMessage();
+        lblError.setText(msg != null ? msg : "Error de conexión.");
+        txtContrasena.clear();
+    });
+
+    Thread hiloLogin = new Thread(taskLogin);
+    hiloLogin.setDaemon(true);
+    hiloLogin.start();
 }
 
     /**
@@ -113,22 +117,6 @@ private void onLogin() {
         } catch (IOException e) {
             lblError.setText("Error de navegación: " + e.getMessage());
         }
-    }
-
-    /**
-     * Compara la clave ingresada con la almacenada en el objeto Persona.
-     * Comparación en texto plano — reemplazar por hash cuando se implemente PBKDF2.
-     */
-    private boolean verificarClave(Persona persona, String claveIngresada) {
-        if (persona instanceof Administrador) {
-            String hash = ((Administrador) persona).getContraseñaAdmin();
-            return claveIngresada.equals(hash);
-        }
-        if (persona instanceof entidades.Usuario) {
-            String hash = ((entidades.Usuario) persona).getContraseña();
-            return claveIngresada.equals(hash);
-        }
-        return false;
     }
 
     /**
