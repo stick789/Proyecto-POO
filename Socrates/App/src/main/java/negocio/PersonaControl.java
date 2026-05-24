@@ -1,10 +1,5 @@
 package negocio;
 
-import dao.IPersonaDAO;
-import entidades.Administrador;
-import entidades.Persona;
-import entidades.Usuario;
-
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
@@ -12,8 +7,14 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+
+import dao.IPersonaDAO;
+import entidades.Administrador;
+import entidades.Persona;
+import entidades.Usuario;
 
 /**
  * PersonaControl — Lógica de negocio centralizada para personas del sistema.
