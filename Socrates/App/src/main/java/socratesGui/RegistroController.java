@@ -12,6 +12,8 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import negocio.PersonaControl;
 
 /**
@@ -104,20 +106,41 @@ public class RegistroController {
                 null         // categoría
         );
 
-        // ── Delegar registro a la capa de negocio ─────────────────────────────
-        String resultado = control.registrar(nuevoUsuario, contrasena);
+        // ── Delegar registro a la capa de negocio (en hilo background) ───────
+        // generarHashPBKDF2 tiene 65.536 iteraciones — bloquea la UI si corre
+        // en el Application Thread. Lo movemos a un Task para evitar el freeze.
+        lblError.setText("Creando cuenta...");
 
-        switch (resultado) {
-            case "OK":
-                abrirVentanaExito(nombre, email);
-                break;
-            case "EMAIL_DUPLICADO":
-                lblError.setText("Ya existe una cuenta con ese correo electrónico.");
-                break;
-            default:
-                lblError.setText("Ocurrió un error al crear la cuenta. Intenta de nuevo.");
-                break;
-        }
+        Task<String> task = new Task<>() {
+            @Override
+            protected String call() {
+                return control.registrar(nuevoUsuario, contrasena);
+            }
+        };
+
+        task.setOnSucceeded(e -> {
+            String resultado = task.getValue();
+            switch (resultado) {
+                case "OK":
+                    abrirVentanaExito(nombre, email);
+                    break;
+                case "EMAIL_DUPLICADO":
+                    lblError.setText("Ya existe una cuenta con ese correo electrónico.");
+                    break;
+                default:
+                    lblError.setText("Ocurrió un error al crear la cuenta. Intenta de nuevo.");
+            }
+        });
+
+        task.setOnFailed(e ->
+            Platform.runLater(() ->
+                lblError.setText("Error inesperado: " + task.getException().getMessage())
+            )
+        );
+
+        Thread hilo = new Thread(task);
+        hilo.setDaemon(true); // se cierra solo si la app se cierra
+        hilo.start();
     }
 
     // ── Acción "Volver" ───────────────────────────────────────────────────────
