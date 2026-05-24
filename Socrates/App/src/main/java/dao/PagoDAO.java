@@ -230,4 +230,28 @@ public void actualizarRefPaycoYEstado(int idPago, String refPayco, String nuevoE
         conexion.desconectar();
     }
 }
+
+// ─── ADMIN: listar todos los pagos ────────────────────────────────────────────
+
+private static final String SQL_SELECT_TODOS =
+        SQL_SELECT_BASE + "ORDER BY fechaPago DESC LIMIT ?, ?";
+
+/** Lista todos los pagos del sistema con paginación (para vista de administrador). */
+public List<Pago> listarTodos(int totalPorPagina, int numPagina) {
+    Connection con = conexion.conectar();
+    List<Pago> lista = new ArrayList<>();
+    if (con == null) return lista;
+    try (PreparedStatement ps = con.prepareStatement(SQL_SELECT_TODOS)) {
+        ps.setInt(1, (numPagina - 1) * totalPorPagina);
+        ps.setInt(2, totalPorPagina);
+        try (ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) lista.add(mapear(rs));
+        }
+    } catch (SQLException e) {
+        throw new RuntimeException("Error al listar todos los pagos", e);
+    } finally {
+        conexion.desconectar();
+    }
+    return lista;
+}
 }

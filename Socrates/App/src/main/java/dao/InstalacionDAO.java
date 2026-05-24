@@ -13,10 +13,12 @@ import java.util.Optional;
 /**
  * InstalacionDAO — Acceso a datos de instalaciones.
  *
- * CORRECCIÓN: Eliminadas las conversiones String↔int de idInstalacion.
- *   ANTES: instalacion.setIdInstalacion(String.valueOf(idGenerado))
- *          y Integer.parseInt(instalacion.getIdInstalacion())
- *   AHORA: instalacion.setIdInstalacion(idGenerado) directamente — int siempre.
+ * CAMBIOS (sede + nombre):
+ *  - SQL_SELECT_BASE ahora selecciona i.nombre e i.idSede.
+ *  - mapear() los asigna a la entidad tras construirla.
+ *  - Nuevos métodos listarGimnasiosPorSede() y listarPiscinasPorSede()
+ *    filtran por i.idSede para mostrar solo las instalaciones de la sede
+ *    del usuario logueado.
  */
 public class InstalacionDAO implements IInstalacionDAO {
 
@@ -33,16 +35,26 @@ public class InstalacionDAO implements IInstalacionDAO {
     private static final String SQL_INSERT_PISCINA =
             "INSERT INTO piscina (idInstalacion, numeroCarriles, profundidad) VALUES (?, ?, ?)";
 
+    // nombre, idSede + sede JOIN añadidos al SELECT
     private static final String SQL_SELECT_BASE =
             "SELECT i.idInstalacion, i.tipo, i.capacidadMaxima, i.aforoActual, " +
+            "       i.nombre, i.idSede, " +
+            "       s.nombre AS nombreSede, s.direccion AS direccionSede, " +
             "       p.numeroCarriles, p.profundidad " +
             "FROM instalacion i " +
-            "LEFT JOIN piscina p ON i.idInstalacion = p.idInstalacion ";
+            "LEFT JOIN piscina p ON i.idInstalacion = p.idInstalacion " +
+            "LEFT JOIN sede    s ON i.idSede        = s.idSede ";
 
-    private static final String SQL_SELECT_POR_ID = SQL_SELECT_BASE + "WHERE i.idInstalacion = ?";
-    private static final String SQL_SELECT_TODOS  = SQL_SELECT_BASE;
-    private static final String SQL_SELECT_GIMNAS = SQL_SELECT_BASE + "WHERE i.tipo = 'GIMNASIO'";
-    private static final String SQL_SELECT_PISC   = SQL_SELECT_BASE + "WHERE i.tipo = 'PISCINA'";
+    private static final String SQL_SELECT_POR_ID   = SQL_SELECT_BASE + "WHERE i.idInstalacion = ?";
+    private static final String SQL_SELECT_TODOS    = SQL_SELECT_BASE;
+    private static final String SQL_SELECT_GIMNAS   = SQL_SELECT_BASE + "WHERE i.tipo = 'GIMNASIO'";
+    private static final String SQL_SELECT_PISC     = SQL_SELECT_BASE + "WHERE i.tipo = 'PISCINA'";
+
+    // ← nuevas queries filtradas por sede
+    private static final String SQL_SELECT_GIMNAS_SEDE =
+            SQL_SELECT_BASE + "WHERE i.tipo = 'GIMNASIO' AND i.idSede = ?";
+    private static final String SQL_SELECT_PISC_SEDE =
+            SQL_SELECT_BASE + "WHERE i.tipo = 'PISCINA'  AND i.idSede = ?";
 
     private static final String SQL_UPDATE_INSTALACION =
             "UPDATE instalacion SET capacidadMaxima = ?, aforoActual = ? WHERE idInstalacion = ?";
@@ -76,7 +88,7 @@ public class InstalacionDAO implements IInstalacionDAO {
                 try (ResultSet keys = ps.getGeneratedKeys()) {
                     if (!keys.next()) throw new SQLException("No se generó idInstalacion.");
                     idGenerado = keys.getInt(1);
-                    instalacion.setIdInstalacion(idGenerado); // ← int directo, sin String.valueOf()
+                    instalacion.setIdInstalacion(idGenerado);
                 }
             }
 
@@ -134,12 +146,26 @@ public class InstalacionDAO implements IInstalacionDAO {
     @Override
     public List<Instalacion> listarPiscinas()  { return ejecutarLista(SQL_SELECT_PISC);   }
 
+    // ── Nuevos métodos filtrados por sede ─────────────────────────────────────
+
+    @Override
+    public List<Instalacion> listarGimnasiosPorSede(int idSede) {
+        return ejecutarListaConSede(SQL_SELECT_GIMNAS_SEDE, idSede);
+    }
+
+    @Override
+    public List<Instalacion> listarPiscinasPorSede(int idSede) {
+        return ejecutarListaConSede(SQL_SELECT_PISC_SEDE, idSede);
+    }
+
+    // ── Actualización ─────────────────────────────────────────────────────────
+
     @Override
     public void actualizar(Instalacion instalacion) {
         Connection con = conexion.conectar();
         if (con == null) return;
 
-        int id = instalacion.getIdInstalacion(); // ← int directo, sin parseInt()
+        int id = instalacion.getIdInstalacion();
 
         try {
             con.setAutoCommit(false);
@@ -205,25 +231,35 @@ public class InstalacionDAO implements IInstalacionDAO {
 
     // ── Mapeo ─────────────────────────────────────────────────────────────────
 
-    /**
-     * Convierte una fila en Gimnasio o Piscina según los datos del JOIN.
-     * wasNull() detecta si numeroCarriles era NULL (= es Gimnasio).
-     */
     private Instalacion mapear(ResultSet rs) throws SQLException {
-        int    id           = rs.getInt("idInstalacion");   // ← int directo
-        String tipo         = rs.getString("tipo");
-        int    capMax       = rs.getInt("capacidadMaxima");
-        int    aforoActual  = rs.getInt("aforoActual");
+        int    id          = rs.getInt("idInstalacion");
+        String tipo        = rs.getString("tipo");
+        int    capMax      = rs.getInt("capacidadMaxima");
+        int    aforoActual = rs.getInt("aforoActual");
+        String nombre      = rs.getString("nombre");
+        int    idSede      = rs.getInt("idSede");
+        String nombreSede  = rs.getString("nombreSede");    // ← nuevo
+        String dirSede     = rs.getString("direccionSede"); // ← nuevo
 
         int     carriles  = rs.getInt("numeroCarriles");
         boolean esPiscina = !rs.wasNull();
 
+        Instalacion inst;
         if (esPiscina) {
             double profundidad = rs.getDouble("profundidad");
-            return new Piscina(id, tipo, capMax, aforoActual, carriles, profundidad);
+            inst = new Piscina(id, tipo, capMax, aforoActual, carriles, profundidad);
+        } else {
+            inst = new Gimnasio(id, tipo, capMax, aforoActual);
         }
-        return new Gimnasio(id, tipo, capMax, aforoActual);
+
+        inst.setNombre(nombre);
+        inst.setIdSede(idSede);
+        inst.setNombreSede(nombreSede);    // ← nuevo
+        inst.setDireccionSede(dirSede);    // ← nuevo
+        return inst;
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private List<Instalacion> ejecutarLista(String sql) {
         Connection con = conexion.conectar();
@@ -235,6 +271,24 @@ public class InstalacionDAO implements IInstalacionDAO {
             while (rs.next()) lista.add(mapear(rs));
         } catch (SQLException e) {
             throw new RuntimeException("Error al listar instalaciones", e);
+        } finally {
+            conexion.desconectar();
+        }
+        return lista;
+    }
+
+    private List<Instalacion> ejecutarListaConSede(String sql, int idSede) {
+        Connection con = conexion.conectar();
+        List<Instalacion> lista = new ArrayList<>();
+        if (con == null) return lista;
+
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, idSede);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) lista.add(mapear(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al listar instalaciones por sede id=" + idSede, e);
         } finally {
             conexion.desconectar();
         }
