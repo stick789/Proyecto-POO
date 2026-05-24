@@ -431,7 +431,7 @@ public class Dashboardusuariocontroller implements Initializable {
      * Devuelve el idSede del usuario logueado.
      * Si la entidad Usuario/Persona no expone aún ese dato, retorna 1 (sede CUR)
      * como valor por defecto temporal.
-     * TODO: guardar idSede en SesionActual cuando se enriquezca el login.
+     * todo: guardar idSede en SesionActual cuando se enriquezca el login.
      */
     private int obtenerIdSedeUsuario() {
         // Si en el futuro SesionActual expone getSede(), usar:
