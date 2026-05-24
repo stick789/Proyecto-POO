@@ -37,7 +37,7 @@ CREATE TABLE `administrador` (
 --
 
 INSERT INTO `administrador` (`id_administrador`, `contraseña_administrador`) VALUES
-(1, 'admin123');
+(1, '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9');
 
 -- --------------------------------------------------------
 
@@ -243,8 +243,8 @@ CREATE TABLE `usuarios` (
 --
 
 INSERT INTO `usuarios` (`idusuario`, `id_persona`, `contraseña`, `categoria`, `esAfiliado`, `id_rol`) VALUES
-(1, 1, 'admin123', NULL, 0, 2),
-(2, 2, 'user123', 'A', 1, 1);
+(1, 1, '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', NULL, 0, 2),
+(2, 2, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', 'A', 1, 1);
 
 --
 -- Índices para tablas volcadas
@@ -452,6 +452,9 @@ ALTER TABLE `usuarios`
   ADD CONSTRAINT `fk_usuarios_persona` FOREIGN KEY (`id_persona`) REFERENCES `persona` (`id_persona`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_usuarios_rol` FOREIGN KEY (`id_rol`) REFERENCES `rol` (`id_rol`);
 COMMIT;
+
+
+
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
