@@ -98,9 +98,9 @@
 
     
 
+      <!--
       <Label text="O" />
-
-      <!-- Botón Google -->
+      Botón Google
       <Button mnemonicParsing="false"
               style="-fx-background-color: #FFFFFF; -fx-border-color: #1E3A8A; -fx-border-radius: 6; -fx-background-radius: 6;">
          <graphic>
@@ -109,6 +109,7 @@
             </ImageView>
          </graphic>
       </Button>
+      -->
 
    </children>
 
