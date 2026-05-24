@@ -110,4 +110,16 @@ public class PasarelaPagosLauncher extends Application {
     public static void main(String[] args) {
         launch(args);
     }
-}
+```
+</details>
+
+>[!IMPORTANT]
+>Rehacer la base de datos por si acaso llegan a salir errores, se hizo la visual para ambos usuario y admin.
+>
+>Revisar errores del tamaño de la ventana de registro exitoso.
+>
+>Añadir información a la base de datos.
+>
+>Designar rol al usuario recién registrado para evitar errores.
+>
+>Añadir finalmente pasarela de pagos y JasperReports y conectarlos al programa/base de datos para así tener el sistema completo.
