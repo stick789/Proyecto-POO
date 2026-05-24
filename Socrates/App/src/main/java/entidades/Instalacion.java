@@ -3,47 +3,31 @@ package entidades;
 /**
  * Instalacion — Clase abstracta base para Gimnasio y Piscina.
  *
- * CORRECCIONES APLICADAS:
- *
- * 1. BUG: idInstalacion era String, la BD lo define como INT AUTO_INCREMENT.
- *    ANTES: private String idInstalacion;
- *           El DAO hacía Integer.parseInt(...) que lanzaba NumberFormatException
- *           si por alguna razón llegaba un valor no numérico.
- *    AHORA: private int idInstalacion;
- *           Consistente con la BD, sin conversiones frágiles.
- *
- * 2. MEJORA: campo nombre eliminado
- *    Estaba declarado pero sin getter ni setter — código muerto que confundía.
- *    La BD no tiene columna nombre en instalacion; si se necesita en el futuro
- *    se agrega junto con su getter/setter y la columna en BD.
- *
- * 3. MEJORA: lista turnos eliminada
- *    List<Turno> turnos nunca se cargaba desde la BD. Un developer que llamara
- *    getTurnos() esperaba datos y recibía lista vacía sin error. La relación
- *    instalación→turnos se gestiona con TurnoDAO.listarPorInstalacion(), no
- *    guardando la lista dentro de la entidad.
- *
- * 4. MEJORA: calcularAforoActual() convertido en método concreto
- *    Era abstracto pero Gimnasio y Piscina devolvían exactamente lo mismo.
- *    No había variación real entre subclases, el polimorfismo no aportaba nada.
- *    Se conserva como método final para que subclases no lo sobreescriban sin
- *    una razón válida. Si en el futuro Piscina calcula diferente (ej: por carriles),
- *    puede eliminarse el modificador final.
+ * CAMBIOS (sede + nombre):
+ *  - Añadidos campos nombre e idSede, que ya existían en la BD pero no se mapeaban.
+ *  - toString() muestra el nombre cuando está disponible.
+ *  - El constructor base de 4 parámetros se conserva para compatibilidad con
+ *    subclases existentes (Gimnasio, Piscina); nombre e idSede se setean vía setter
+ *    desde el DAO tras construir el objeto.
  */
 public abstract class Instalacion {
 
-    private int    idInstalacion;   // ← corregido: int (era String)
+    private int    idInstalacion;
     private String tipo;            // "GIMNASIO" o "PISCINA"
     private int    capacidadMaxima;
     private int    aforoActual;     // cupos DISPONIBLES (no ocupados)
+    private String nombre;          // columna `nombre` de la BD
+    private int    idSede;          // columna `idSede` de la BD
+    private String nombreSede;      // ← s.nombre del JOIN con sede
+    private String direccionSede;   // ← s.direccion del JOIN con sede
 
     public Instalacion() {}
 
     public Instalacion(int idInstalacion, String tipo, int capacidadMaxima, int aforoActual) {
-        this.idInstalacion  = idInstalacion;
-        this.tipo           = validarTipo(tipo);
+        this.idInstalacion   = idInstalacion;
+        this.tipo            = validarTipo(tipo);
         this.capacidadMaxima = capacidadMaxima;
-        this.aforoActual    = aforoActual;
+        this.aforoActual     = aforoActual;
     }
 
     // ── Getters ──────────────────────────────────────────────────────────────
@@ -52,6 +36,10 @@ public abstract class Instalacion {
     public String getTipo()           { return tipo; }
     public int    getCapacidadMaxima(){ return capacidadMaxima; }
     public int    getAforoActual()    { return aforoActual; }
+    public String getNombre()         { return nombre; }
+    public int    getIdSede()         { return idSede; }
+    public String getNombreSede()     { return nombreSede; }
+    public String getDireccionSede()  { return direccionSede; }
 
     // ── Setters con validación ────────────────────────────────────────────────
 
@@ -78,6 +66,11 @@ public abstract class Instalacion {
         this.aforoActual = aforoActual;
     }
 
+    public void setNombre(String nombre)             { this.nombre = nombre; }
+    public void setIdSede(int idSede)                { this.idSede = idSede; }
+    public void setNombreSede(String nombreSede)     { this.nombreSede = nombreSede; }
+    public void setDireccionSede(String direccion)   { this.direccionSede = direccion; }
+
     // ── Lógica de dominio ────────────────────────────────────────────────────
 
     /** Cuántos cupos quedan disponibles para reservar. */
@@ -85,33 +78,18 @@ public abstract class Instalacion {
         return aforoActual;
     }
 
-    /**
-     * Descuenta un cupo cuando se reserva un turno.
-     * @throws IllegalStateException si no hay cupos disponibles.
-     */
     public void descontarCupo() {
         if (aforoActual <= 0)
             throw new IllegalStateException("No hay cupos disponibles en la instalación.");
         aforoActual--;
     }
 
-    /**
-     * Libera un cupo cuando se cancela un turno.
-     * @throws IllegalStateException si el aforo ya está en su máximo.
-     */
     public void liberarCupo() {
         if (aforoActual >= capacidadMaxima)
             throw new IllegalStateException("El aforo actual ya está en su capacidad máxima.");
         aforoActual++;
     }
 
-    /**
-     * Retorna el aforo actual disponible.
-     * Era abstracto antes pero Gimnasio y Piscina devolvían lo mismo.
-     * Se mantiene como método concreto para evitar sobrescrituras innecesarias.
-     * Si una subclase necesita calcular diferente (ej: Piscina por carriles libres),
-     * puede sobrescribir este método.
-     */
     public int calcularAforoActual() {
         return aforoActual;
     }
@@ -129,10 +107,13 @@ public abstract class Instalacion {
         return normalizado;
     }
 
+    /**
+     * Muestra nombre + sede. Usado por ChoiceDialog para mostrar opciones legibles.
+     */
     @Override
     public String toString() {
-        return tipo + " | Aforo máx: " + capacidadMaxima +
-               " | Reservados: " + (capacidadMaxima - aforoActual) +
-               " | Disponibles: " + aforoActual;
+        String label = (nombre != null && !nombre.isBlank()) ? nombre : tipo;
+        String sede  = (nombreSede != null && !nombreSede.isBlank()) ? " · " + nombreSede : "";
+        return label + sede + " | Máx: " + capacidadMaxima + " | Disponibles: " + aforoActual;
     }
 }
