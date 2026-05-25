@@ -53,3 +53,4 @@ secrets.properties
 
 # Reports / build artifacts
 /reports/
+"Socrates/App/target/" 

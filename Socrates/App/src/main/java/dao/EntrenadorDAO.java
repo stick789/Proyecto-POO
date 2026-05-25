@@ -17,16 +17,14 @@ import entidades.Entrenador;
 /**
  * EntrenadorDAO — Acceso a datos de entrenadores.
  *
- * <p>Un entrenador se almacena en tres tablas coordinadas:</p>
- * <ol>
- *   <li>{@code persona} — datos personales (nombre, email, documento).</li>
- *   <li>{@code usuarios} — credenciales y rol ({@code nombre_rol = 'ENTRENADOR'}).</li>
- *   <li>{@code entrenador} — especialidad ("Natación" o "Gimnasio").</li>
- * </ol>
+ * Esquema real de la BD:
+ *   persona        — datos personales (nombre, email, tipodocumento, numdocumento)
+ *   usuarios       — credenciales y rol (id_rol = ENTRENADOR)
+ *   entrenador     — (idEntrenador PK propio, especialidad, numDocumento FK→persona, idInstalacion)
  *
- * <p>Todas las operaciones de escritura multi-tabla usan transacciones
- * para garantizar consistencia. Compatible con el script SQL adjunto que
- * crea la tabla {@code entrenador}.</p>
+ * IMPORTANTE: la tabla entrenador NO tiene FK a usuarios.
+ * Su FK es numDocumento → persona.numdocumento.
+ * Por eso al insertar en entrenador se usa el numDocumento, no el idusuario.
  */
 public class EntrenadorDAO implements IEntrenadorDAO {
 
@@ -43,8 +41,9 @@ public class EntrenadorDAO implements IEntrenadorDAO {
             "VALUES (?, ?, 'NO AFILIADO', 0, " +
             "  (SELECT id_rol FROM rol WHERE nombre_rol = 'ENTRENADOR' LIMIT 1))";
 
+    // FIX: columnas reales según el SQL — idEntrenador, especialidad, numDocumento
     private static final String SQL_INSERT_ENTRENADOR =
-            "INSERT INTO entrenador (id_entrenador, especialidad) VALUES (?, ?)";
+            "INSERT INTO entrenador (idEntrenador, especialidad, numDocumento) VALUES (?, ?, ?)";
 
     // ── SELECT ────────────────────────────────────────────────────────────────
 
@@ -52,12 +51,12 @@ public class EntrenadorDAO implements IEntrenadorDAO {
             "SELECT u.idusuario, p.nombre, p.email, p.tipodocumento, p.numdocumento, " +
             "       e.especialidad, r.nombre_rol " +
             "FROM entrenador e " +
-            "JOIN usuarios u ON e.id_entrenador = u.idusuario " +
-            "JOIN persona p ON u.id_persona = p.id_persona " +
+            "JOIN persona p ON e.numDocumento = p.numdocumento " +
+            "JOIN usuarios u ON u.id_persona = p.id_persona " +
             "LEFT JOIN rol r ON u.id_rol = r.id_rol ";
 
     private static final String SQL_SELECT_POR_ID =
-            SQL_SELECT_BASE + "WHERE e.id_entrenador = ?";
+            SQL_SELECT_BASE + "WHERE e.idEntrenador = ?";
 
     private static final String SQL_SELECT_PAGINADO =
             SQL_SELECT_BASE +
@@ -69,7 +68,8 @@ public class EntrenadorDAO implements IEntrenadorDAO {
 
     private static final String SQL_COUNT_ACTIVOS =
             "SELECT COUNT(*) FROM entrenador e " +
-            "JOIN usuarios u ON e.id_entrenador = u.idusuario WHERE u.activo = 1";
+            "JOIN persona p ON e.numDocumento = p.numdocumento " +
+            "JOIN usuarios u ON u.id_persona = p.id_persona WHERE u.activo = 1";
 
     // ── UPDATE ────────────────────────────────────────────────────────────────
 
@@ -80,7 +80,7 @@ public class EntrenadorDAO implements IEntrenadorDAO {
             "WHERE u.idusuario = ?";
 
     private static final String SQL_UPDATE_ESPECIALIDAD =
-            "UPDATE entrenador SET especialidad = ? WHERE id_entrenador = ?";
+            "UPDATE entrenador SET especialidad = ? WHERE idEntrenador = ?";
 
     private static final String SQL_DESACTIVAR =
             "UPDATE usuarios SET activo = 0 WHERE idusuario = ?";
@@ -91,7 +91,7 @@ public class EntrenadorDAO implements IEntrenadorDAO {
     // ── DELETE ────────────────────────────────────────────────────────────────
 
     private static final String SQL_DELETE_ENTRENADOR =
-            "DELETE FROM entrenador WHERE id_entrenador = ?";
+            "DELETE FROM entrenador WHERE idEntrenador = ?";
 
     private static final String SQL_DELETE_USUARIO =
             "DELETE FROM usuarios WHERE idusuario = ?";
@@ -137,10 +137,12 @@ public class EntrenadorDAO implements IEntrenadorDAO {
                 }
             }
 
-            // 3. Insertar en entrenador
+            // 3. FIX: insertar en entrenador con columnas reales del esquema SQL
+            //    idEntrenador = idusuario generado, numDocumento = FK a persona
             try (PreparedStatement ps = con.prepareStatement(SQL_INSERT_ENTRENADOR)) {
                 ps.setInt(1, idUsuario);
                 ps.setString(2, entrenador.getEspecialidad());
+                ps.setString(3, entrenador.getNumDocumento());
                 ps.executeUpdate();
             }
 
@@ -207,6 +209,7 @@ public class EntrenadorDAO implements IEntrenadorDAO {
         try {
             con.setAutoCommit(false);
 
+            // Obtener id_persona desde usuarios para luego borrar persona
             int idPersona = -1;
             try (PreparedStatement ps = con.prepareStatement(
                     "SELECT id_persona FROM usuarios WHERE idusuario = ?")) {
@@ -217,6 +220,7 @@ public class EntrenadorDAO implements IEntrenadorDAO {
             }
             if (idPersona == -1) { con.rollback(); return; }
 
+            // FIX: usar idEntrenador con el nombre de columna correcto
             try (PreparedStatement ps = con.prepareStatement(SQL_DELETE_ENTRENADOR)) {
                 ps.setInt(1, idEntrenador); ps.executeUpdate();
             }

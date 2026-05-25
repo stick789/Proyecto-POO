@@ -2,6 +2,9 @@ package socratesGui;
 
 import java.math.BigDecimal;
 import java.net.URL;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -9,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
+import java.util.UUID;
 
 import dao.EntrenadorDAO;
 import dao.InstalacionDAO;
@@ -16,12 +20,15 @@ import dao.PagoDAO;
 import dao.PersonaDAO;
 import dao.SedeDAO;
 import dao.TurnoDAO;
+import database.Conexion;
 import entidades.*;
 import negocio.AdminService;
+import negocio.PersonaControl;
 
 import javafx.animation.FadeTransition;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
@@ -30,21 +37,10 @@ import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.util.Duration;
 
-/**
- * Dashboardadmincontroller — Panel de administración completamente funcional.
- *
- * Módulos operativos:
- *   - Inicio:        estadísticas en vivo desde BD (v_estadisticas_admin).
- *   - Usuarios:      listar, buscar, activar/desactivar (cascada de turnos), cambiar rol, eliminar.
- *   - Turnos:        listar todos, cancelar como admin (con auditoría y liberación de cupo).
- *   - Instalaciones: listar, editar nombre+capacidad, abrir/cerrar instalación.
- *   - Pagos:         listar todos (paginado).
- *   - Entrenadores:  listar.
- *   - Sedes:         listar, editar datos.
- *
- * Todas las acciones persisten inmediatamente en BD y quedan en audit_log.
- */
 public class Dashboardadmincontroller implements Initializable {
+
+    // ── SUPER ADMIN ID — solo este usuario puede crear admins y entrenadores ──
+    private static final int SUPER_ADMIN_ID = 1;
 
     // ── Sidebar ───────────────────────────────────────────────────────────────
     @FXML private Label  lblNombreAdmin;
@@ -141,9 +137,10 @@ public class Dashboardadmincontroller implements Initializable {
     @FXML private TableColumn<Sede, String>         colSedeAcciones;
     @FXML private Label                             lblMsgSedes;
 
-    // ── Servicio central admin ────────────────────────────────────────────────
+    // ── Estado ────────────────────────────────────────────────────────────────
     private AdminService adminService;
     private int adminId = 0;
+    private boolean esSuperAdmin = false;
 
     // ─────────────────────────────────────────────────────────────────────────
     //  INITIALIZE
@@ -153,13 +150,13 @@ public class Dashboardadmincontroller implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         try {
             adminService = new AdminService();
-
             lblFecha.setText(LocalDateTime.now()
                     .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")));
 
             Persona admin = SesionActual.getUsuario();
             if (admin != null) {
-                adminId = admin.getId();
+                adminId      = admin.getId();
+                esSuperAdmin = (adminId == SUPER_ADMIN_ID);
                 lblNombreAdmin.setText(admin.getNombre() != null ? admin.getNombre() : "Admin");
             } else {
                 lblNombreAdmin.setText("Admin Prueba");
@@ -177,7 +174,6 @@ public class Dashboardadmincontroller implements Initializable {
                 tv.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
             }
 
-            // Búsqueda reactiva en usuarios
             if (txtBuscarUsuario != null) {
                 txtBuscarUsuario.textProperty().addListener((obs, o, n) -> filtrarUsuarios(n));
             }
@@ -207,17 +203,14 @@ public class Dashboardadmincontroller implements Initializable {
                 return new SimpleStringProperty(safe(((Administrador) c.getValue()).getNumDocumento()));
             return new SimpleStringProperty("—");
         });
-        // Columna Estado (activo/inactivo) — se muestra según el rol/tipo
-        if (colUsuarioEstado != null) {
-            colUsuarioEstado.setCellValueFactory(c ->
-                    new SimpleStringProperty("ACTIVO")); // default; real viene de BD con columna activo
-        }
-        // Columna acciones con botones inline
+        if (colUsuarioEstado != null)
+            colUsuarioEstado.setCellValueFactory(c -> new SimpleStringProperty("ACTIVO"));
+
         if (colUsuarioAcciones != null) {
             colUsuarioAcciones.setCellFactory(col -> new TableCell<>() {
-                private final Button btnToggle  = new Button();
+                private final Button btnToggle   = new Button();
                 private final Button btnEliminar = new Button("Eliminar");
-                private final HBox   box        = new HBox(4, btnToggle, btnEliminar);
+                private final HBox   box         = new HBox(4, btnToggle, btnEliminar);
                 {
                     estiloBtnPequeno(btnToggle, "#16a34a");
                     estiloBtnPequeno(btnEliminar, "#dc2626");
@@ -227,11 +220,9 @@ public class Dashboardadmincontroller implements Initializable {
                 protected void updateItem(String item, boolean empty) {
                     super.updateItem(item, empty);
                     if (empty || getTableRow() == null || getTableRow().getItem() == null) {
-                        setGraphic(null);
-                        return;
+                        setGraphic(null); return;
                     }
                     Persona p = (Persona) getTableRow().getItem();
-                    // No permitir desactivar al propio admin
                     if (p.getId() == adminId) {
                         btnToggle.setText("(yo)");
                         btnToggle.setDisable(true);
@@ -239,7 +230,7 @@ public class Dashboardadmincontroller implements Initializable {
                     } else {
                         btnToggle.setDisable(false);
                         btnEliminar.setDisable(false);
-                        btnToggle.setText("Desactivar");  // simplificado — podría mostrar estado real
+                        btnToggle.setText("Desactivar");
                         btnToggle.setOnAction(e -> accionToggleUsuario(p));
                         btnEliminar.setOnAction(e -> accionEliminarUsuario(p));
                     }
@@ -268,7 +259,6 @@ public class Dashboardadmincontroller implements Initializable {
         colTurnoUsuario.setCellValueFactory(c ->
                 new SimpleStringProperty(c.getValue().getUsuario() != null
                         ? safe(c.getValue().getUsuario().getNombre()) : "—"));
-        // Botón cancelar
         if (colTurnoAcciones != null) {
             colTurnoAcciones.setCellFactory(col -> new TableCell<>() {
                 private final Button btnCancelar = new Button("Cancelar");
@@ -304,9 +294,7 @@ public class Dashboardadmincontroller implements Initializable {
         colInstalacionAforo.setCellValueFactory(c ->
                 new SimpleStringProperty(String.valueOf(c.getValue().getAforoActual())));
         if (colInstalacionEstado != null)
-            colInstalacionEstado.setCellValueFactory(c ->
-                    new SimpleStringProperty("ABIERTA")); // default; real requiere columna 'cerrada'
-        // Botones editar
+            colInstalacionEstado.setCellValueFactory(c -> new SimpleStringProperty("ABIERTA"));
         if (colInstalacionAcciones != null) {
             colInstalacionAcciones.setCellFactory(col -> new TableCell<>() {
                 private final Button btnEditar = new Button("Editar");
@@ -394,13 +382,48 @@ public class Dashboardadmincontroller implements Initializable {
     //  NAVEGACIÓN
     // ─────────────────────────────────────────────────────────────────────────
 
-    @FXML private void onInicio()         { mostrarPanel(panelInicio,        "Inicio");        cargarInicio(); }
-    @FXML private void onUsuarios()       { mostrarPanel(panelUsuarios,      "Usuarios");      cargarUsuarios(); }
-    @FXML private void onTurnos()         { mostrarPanel(panelTurnos,        "Turnos");        cargarTurnos(); }
-    @FXML private void onInstalaciones()  { mostrarPanel(panelInstalaciones, "Instalaciones"); cargarInstalaciones(); }
-    @FXML private void onPagos()          { mostrarPanel(panelPagos,         "Pagos");         cargarPagos(); }
-    @FXML private void onEntrenadores()   { mostrarPanel(panelEntrenadores,  "Entrenadores");  cargarEntrenadores(); }
-    @FXML private void onSedes()          { mostrarPanel(panelSedes,         "Sedes");         cargarSedes(); }
+    @FXML private void onInicio()        { mostrarPanel(panelInicio,        "Inicio");        cargarInicio(); }
+    @FXML private void onTurnos()        { mostrarPanel(panelTurnos,        "Turnos");        cargarTurnos(); }
+    @FXML private void onInstalaciones() { mostrarPanel(panelInstalaciones, "Instalaciones"); cargarInstalaciones(); }
+    @FXML private void onPagos()         { mostrarPanel(panelPagos,         "Pagos");         cargarPagos(); }
+    @FXML private void onSedes()         { mostrarPanel(panelSedes,         "Sedes");         cargarSedes(); }
+
+    // FIX: inyectarBotonesSuperAdmin() ahora se llama aquí, donde viven los botones
+    @FXML private void onUsuarios() {
+        mostrarPanel(panelUsuarios, "Usuarios");
+        cargarUsuarios();
+        inyectarBotonesSuperAdmin();
+    }
+
+    // Entrenadores no necesita inyectar botones — solo navega y carga
+    @FXML private void onEntrenadores() {
+        mostrarPanel(panelEntrenadores, "Entrenadores");
+        cargarEntrenadores();
+    }
+
+    // FIX: verifica panelUsuarios (correcto), ya no se llama desde onEntrenadores
+    private void inyectarBotonesSuperAdmin() {
+        if (!esSuperAdmin) return;
+        boolean yaAgregado = panelUsuarios.getChildren().stream()
+                .anyMatch(n -> "superAdminBar".equals(n.getId()));
+        if (yaAgregado) return;
+
+        Button btnNuevoEntrenador = new Button("➕  Agregar Entrenador");
+        Button btnNuevoAdmin      = new Button("🔐  Crear Administrador");
+        estiloBtnPequeno(btnNuevoEntrenador, "#E85D04");
+        estiloBtnPequeno(btnNuevoAdmin,      "#7c3aed");
+        btnNuevoEntrenador.setStyle(btnNuevoEntrenador.getStyle() + " -fx-font-size: 13; -fx-padding: 8 16;");
+        btnNuevoAdmin.setStyle(btnNuevoAdmin.getStyle()           + " -fx-font-size: 13; -fx-padding: 8 16;");
+        btnNuevoEntrenador.setOnAction(e -> dialogoCrearEntrenador());
+        btnNuevoAdmin.setOnAction(e -> dialogoCrearAdministrador());
+
+        HBox bar = new HBox(12, btnNuevoEntrenador, btnNuevoAdmin);
+        bar.setId("superAdminBar");
+        bar.setAlignment(Pos.CENTER_LEFT);
+        bar.setPadding(new Insets(0, 0, 8, 0));
+
+        panelUsuarios.getChildren().add(1, bar);
+    }
 
     @FXML private void onLogout() {
         try {
@@ -420,13 +443,201 @@ public class Dashboardadmincontroller implements Initializable {
         panelActivo.setManaged(true);
         lblSeccion.setText(titulo);
         FadeTransition ft = new FadeTransition(Duration.millis(250), panelActivo);
-        ft.setFromValue(0.0);
-        ft.setToValue(1.0);
-        ft.play();
+        ft.setFromValue(0.0); ft.setToValue(1.0); ft.play();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    //  CARGA DE DATOS (BD real con fallback demo)
+    //  SUPER ADMIN — CREAR ENTRENADOR
+    //  FIX: sin campo contraseña — se genera un hash bloqueado con UUID
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void dialogoCrearEntrenador() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Agregar Entrenador");
+        dialog.setHeaderText("Nuevo entrenador — solo visible para el Super Admin");
+
+        TextField        txtNombre  = new TextField();  txtNombre.setPromptText("Nombre completo");
+        TextField        txtEmail   = new TextField();  txtEmail.setPromptText("Correo electrónico");
+        ComboBox<String> cmbTipoDoc = new ComboBox<>(FXCollections.observableArrayList("CC","TI","CE","PP","NIT"));
+        cmbTipoDoc.setPromptText("Tipo doc.");
+        TextField        txtNumDoc  = new TextField();  txtNumDoc.setPromptText("Número de documento");
+        ComboBox<String> cmbEspec   = new ComboBox<>(FXCollections.observableArrayList("Musculacion","Natacion"));
+        cmbEspec.setPromptText("Especialidad");
+
+        GridPane grid = crearGrid();
+        grid.add(new Label("Nombre:"),       0, 0); grid.add(txtNombre,  1, 0);
+        grid.add(new Label("Email:"),        0, 1); grid.add(txtEmail,   1, 1);
+        grid.add(new Label("Tipo doc.:"),    0, 2); grid.add(cmbTipoDoc, 1, 2);
+        grid.add(new Label("Num. doc.:"),    0, 3); grid.add(txtNumDoc,  1, 3);
+        grid.add(new Label("Especialidad:"), 0, 4); grid.add(cmbEspec,   1, 4);
+
+        Label lblMsg = new Label();
+        lblMsg.setStyle("-fx-text-fill: #dc2626;");
+        grid.add(lblMsg, 0, 5, 2, 1);
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        Button okBtn = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        okBtn.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            String nombre  = txtNombre.getText().trim();
+            String email   = txtEmail.getText().trim();
+            String tipoDoc = cmbTipoDoc.getValue();
+            String numDoc  = txtNumDoc.getText().trim();
+            String espec   = cmbEspec.getValue();
+
+            if (nombre.isEmpty() || email.isEmpty() || numDoc.isEmpty()) {
+                lblMsg.setText("Todos los campos son obligatorios."); event.consume(); return;
+            }
+            if (tipoDoc == null) { lblMsg.setText("Selecciona tipo de documento."); event.consume(); return; }
+            if (espec == null)   { lblMsg.setText("Selecciona la especialidad.");    event.consume(); return; }
+            if (!email.contains("@")) { lblMsg.setText("Email inválido.");           event.consume(); return; }
+        });
+
+        dialog.showAndWait().ifPresent(bt -> {
+            if (bt != ButtonType.OK) return;
+
+            // Capturar valores antes de entrar al Task (hilo background)
+            final String nombre  = txtNombre.getText().trim();
+            final String email   = txtEmail.getText().trim();
+            final String tipoDoc = cmbTipoDoc.getValue();
+            final String numDoc  = txtNumDoc.getText().trim();
+            final String espec   = cmbEspec.getValue();
+
+            Task<String> task = new Task<>() {
+                @Override
+                protected String call() throws Exception {
+                    PersonaDAO pdao = new PersonaDAO();
+                    if (pdao.existe(email)) return "EMAIL_DUPLICADO";
+                    // FIX: hash bloqueado con UUID — entrenadores no inician sesión,
+                    // pero la columna contraseña en BD no acepta NULL
+                    String hashBloqueado = PersonaControl.generarHashPBKDF2(UUID.randomUUID().toString());
+                    if (hashBloqueado == null) return "ERROR_HASH";
+                    Entrenador ent = new Entrenador(nombre, email, espec, tipoDoc, numDoc, 0);
+                    new EntrenadorDAO().insertar(ent, hashBloqueado);
+                    return "OK";
+                }
+            };
+            task.setOnSucceeded(e -> {
+                switch (task.getValue()) {
+                    case "OK":
+                        mostrarInfo("Entrenador creado",
+                                nombre + " fue agregado como entrenador de " + espec + ".");
+                        cargarEntrenadores();
+                        break;
+                    case "EMAIL_DUPLICADO":
+                        mostrarError("Email duplicado", "Ya existe una cuenta con ese correo.");
+                        break;
+                    default:
+                        mostrarError("Error", "No se pudo crear el entrenador.");
+                        break;
+                }
+            });
+            task.setOnFailed(e ->
+                    mostrarError("Error", task.getException().getMessage()));
+            Thread t = new Thread(task); t.setDaemon(true); t.start();
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  SUPER ADMIN — CREAR ADMINISTRADOR
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void dialogoCrearAdministrador() {
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Crear Administrador");
+        dialog.setHeaderText("Nuevo administrador — acceso restringido al Super Admin");
+
+        TextField        txtNombre  = new TextField();  txtNombre.setPromptText("Nombre completo");
+        TextField        txtEmail   = new TextField();  txtEmail.setPromptText("Correo electrónico");
+        ComboBox<String> cmbTipoDoc = new ComboBox<>(FXCollections.observableArrayList("CC","TI","CE","PP","NIT"));
+        cmbTipoDoc.setPromptText("Tipo doc.");
+        TextField        txtNumDoc  = new TextField();  txtNumDoc.setPromptText("Número de documento");
+        PasswordField    txtPass    = new PasswordField(); txtPass.setPromptText("Contraseña (mín. 6 car.)");
+
+        GridPane grid = crearGrid();
+        grid.add(new Label("Nombre:"),     0, 0); grid.add(txtNombre,  1, 0);
+        grid.add(new Label("Email:"),      0, 1); grid.add(txtEmail,   1, 1);
+        grid.add(new Label("Tipo doc.:"),  0, 2); grid.add(cmbTipoDoc, 1, 2);
+        grid.add(new Label("Num. doc.:"),  0, 3); grid.add(txtNumDoc,  1, 3);
+        grid.add(new Label("Contraseña:"), 0, 4); grid.add(txtPass,    1, 4);
+
+        Label lblMsg = new Label();
+        lblMsg.setStyle("-fx-text-fill: #dc2626;");
+        grid.add(lblMsg, 0, 5, 2, 1);
+        dialog.getDialogPane().setContent(grid);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        Button okBtn = (Button) dialog.getDialogPane().lookupButton(ButtonType.OK);
+        okBtn.addEventFilter(javafx.event.ActionEvent.ACTION, event -> {
+            if (txtNombre.getText().trim().isEmpty() || txtEmail.getText().trim().isEmpty()
+                    || txtNumDoc.getText().trim().isEmpty() || txtPass.getText().isEmpty()) {
+                lblMsg.setText("Todos los campos son obligatorios."); event.consume(); return;
+            }
+            if (cmbTipoDoc.getValue() == null) { lblMsg.setText("Selecciona tipo de documento."); event.consume(); return; }
+            if (!txtEmail.getText().contains("@")) { lblMsg.setText("Email inválido."); event.consume(); return; }
+            if (txtPass.getText().length() < 6) { lblMsg.setText("Contraseña mínimo 6 caracteres."); event.consume(); return; }
+        });
+
+        dialog.showAndWait().ifPresent(bt -> {
+            if (bt != ButtonType.OK) return;
+
+            // Capturar valores antes de entrar al Task (hilo background)
+            final String nombre  = txtNombre.getText().trim();
+            final String email   = txtEmail.getText().trim();
+            final String tipoDoc = cmbTipoDoc.getValue();
+            final String numDoc  = txtNumDoc.getText().trim();
+            final String pass    = txtPass.getText();
+
+            Task<String> task = new Task<>() {
+                @Override protected String call() throws Exception {
+                    PersonaDAO pdao = new PersonaDAO();
+                    if (pdao.existe(email)) return "EMAIL_DUPLICADO";
+
+                    String hash = PersonaControl.generarHashPBKDF2(pass);
+                    if (hash == null) return "ERROR_HASH";
+
+                    Usuario nuevoUsuario = new Usuario(0, nombre, email, tipoDoc, numDoc, false, null);
+                    nuevoUsuario.setContraseña(hash);
+                    pdao.insertar(nuevoUsuario);
+                    int nuevoId = nuevoUsuario.getId();
+
+                    pdao.actualizarRol(nuevoId, "ADMINISTRADOR");
+
+                    Conexion con = Conexion.getInstancia();
+                    Connection c = con.conectar();
+                    try (PreparedStatement ps = c.prepareStatement(
+                            "INSERT INTO administrador (id_administrador, contraseña_administrador) VALUES (?, ?)")) {
+                        ps.setInt(1, nuevoId);
+                        ps.setString(2, hash);
+                        ps.executeUpdate();
+                    } catch (SQLException ex) {
+                        throw new RuntimeException("Error al insertar en tabla administrador", ex);
+                    }
+
+                    return "OK:" + nuevoId;
+                }
+            };
+            task.setOnSucceeded(e -> {
+                String res = task.getValue();
+                if (res.startsWith("OK")) {
+                    mostrarInfo("Administrador creado",
+                            nombre + " fue creado como administrador.\n" +
+                            "Puede iniciar sesión con: " + email);
+                    cargarUsuarios();
+                } else if ("EMAIL_DUPLICADO".equals(res)) {
+                    mostrarError("Email duplicado", "Ya existe una cuenta con ese correo.");
+                } else {
+                    mostrarError("Error", "No se pudo crear el administrador.");
+                }
+            });
+            task.setOnFailed(e ->
+                    mostrarError("Error", task.getException().getMessage()));
+            Thread t = new Thread(task); t.setDaemon(true); t.start();
+        });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    //  CARGA DE DATOS
     // ─────────────────────────────────────────────────────────────────────────
 
     private void cargarInicio() {
@@ -440,25 +651,20 @@ public class Dashboardadmincontroller implements Initializable {
                 if (lblCancelacionesMes != null) lblCancelacionesMes.setText(stats.getOrDefault("cancelacionesMes", "—"));
                 if (lblIngresosMes != null) lblIngresosMes.setText("$ " + stats.getOrDefault("ingresosMes", "—"));
             } else {
-                // Demo
                 lblTotalUsuarios.setText("3"); lblTotalTurnos.setText("2");
                 lblTurnosActivos.setText("1"); lblTotalEntrenadores.setText("2");
                 if (lblCancelacionesMes != null) lblCancelacionesMes.setText("0");
                 if (lblIngresosMes != null) lblIngresosMes.setText("$ 77.000");
             }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        } catch (Exception e) { e.printStackTrace(); }
     }
 
     private void cargarUsuarios() {
         try {
             if (adminId > 0) {
-                PersonaDAO daoP = new PersonaDAO();
                 String filtro = txtBuscarUsuario != null ? txtBuscarUsuario.getText() : "";
-                List<Persona> lista = daoP.listar(filtro, 200, 1);
-                tablaUsuarios.setItems(FXCollections.observableArrayList(
-                        lista != null ? lista : crearUsuariosDemo()));
+                List<Persona> lista = new PersonaDAO().listar(filtro, 200, 1);
+                tablaUsuarios.setItems(FXCollections.observableArrayList(lista != null ? lista : crearUsuariosDemo()));
                 if (lblMsgUsuarios != null) lblMsgUsuarios.setText("");
             } else {
                 tablaUsuarios.setItems(FXCollections.observableArrayList(crearUsuariosDemo()));
@@ -473,8 +679,7 @@ public class Dashboardadmincontroller implements Initializable {
     private void filtrarUsuarios(String texto) {
         if (adminId > 0) {
             try {
-                PersonaDAO daoP = new PersonaDAO();
-                List<Persona> lista = daoP.listar(texto == null ? "" : texto, 200, 1);
+                List<Persona> lista = new PersonaDAO().listar(texto == null ? "" : texto, 200, 1);
                 tablaUsuarios.setItems(FXCollections.observableArrayList(lista != null ? lista : List.of()));
             } catch (Exception e) { /* silencioso */ }
         }
@@ -483,8 +688,7 @@ public class Dashboardadmincontroller implements Initializable {
     private void cargarTurnos() {
         try {
             if (adminId > 0) {
-                TurnoDAO daoT = new TurnoDAO(new PersonaDAO(), new InstalacionDAO(), new EntrenadorDAO());
-                List<Turno> lista = daoT.listarTodos();
+                List<Turno> lista = new TurnoDAO(new PersonaDAO(), new InstalacionDAO(), new EntrenadorDAO()).listarTodos();
                 tablaTurnos.setItems(FXCollections.observableArrayList(lista != null ? lista : crearTurnosDemo()));
                 if (lblMsgTurnos != null) lblMsgTurnos.setText("");
             } else {
@@ -500,8 +704,7 @@ public class Dashboardadmincontroller implements Initializable {
     private void cargarInstalaciones() {
         try {
             if (adminId > 0) {
-                InstalacionDAO daoI = new InstalacionDAO();
-                List<Instalacion> lista = daoI.listarTodos();
+                List<Instalacion> lista = new InstalacionDAO().listarTodos();
                 tablaInstalaciones.setItems(FXCollections.observableArrayList(lista != null ? lista : crearInstalacionesDemo()));
                 if (lblMsgInstalaciones != null) lblMsgInstalaciones.setText("");
             } else {
@@ -517,8 +720,7 @@ public class Dashboardadmincontroller implements Initializable {
     private void cargarPagos() {
         try {
             if (adminId > 0) {
-                PagoDAO daoP = new PagoDAO();
-                List<Pago> lista = daoP.listarTodos(200, 1);
+                List<Pago> lista = new PagoDAO().listarTodos(200, 1);
                 tablaPagos.setItems(FXCollections.observableArrayList(lista != null ? lista : crearPagosDemo()));
                 if (lblMsgPagos != null) lblMsgPagos.setText("");
             } else {
@@ -534,8 +736,7 @@ public class Dashboardadmincontroller implements Initializable {
     private void cargarEntrenadores() {
         try {
             if (adminId > 0) {
-                EntrenadorDAO daoE = new EntrenadorDAO();
-                List<Entrenador> lista = daoE.listar("", 200, 1);
+                List<Entrenador> lista = new EntrenadorDAO().listar("", 200, 1);
                 tablaEntrenadores.setItems(FXCollections.observableArrayList(lista != null ? lista : crearEntrenadoresDemo()));
                 if (lblMsgEntrenadores != null) lblMsgEntrenadores.setText("");
             } else {
@@ -551,8 +752,7 @@ public class Dashboardadmincontroller implements Initializable {
     private void cargarSedes() {
         try {
             if (adminId > 0) {
-                SedeDAO daoS = new SedeDAO();
-                List<Sede> lista = daoS.listarTodos();
+                List<Sede> lista = new SedeDAO().listarTodos();
                 tablaSedesAdmin.setItems(FXCollections.observableArrayList(lista != null ? lista : crearSedesDemo()));
                 if (lblMsgSedes != null) lblMsgSedes.setText("");
             } else {
@@ -569,134 +769,90 @@ public class Dashboardadmincontroller implements Initializable {
     //  ACCIONES DE ADMINISTRADOR
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Desactiva o activa un usuario con confirmación. */
     private void accionToggleUsuario(Persona persona) {
-        boolean confirmar = mostrarConfirmacion(
-                "¿Desactivar usuario?",
-                "Se desactivará la cuenta de " + persona.getNombre() +
-                " y se cancelarán sus turnos futuros.");
-        if (!confirmar) return;
+        if (!mostrarConfirmacion("¿Desactivar usuario?",
+                "Se desactivará la cuenta de " + persona.getNombre() + " y se cancelarán sus turnos futuros.")) return;
         try {
             int cancelados = adminService.desactivarUsuario(adminId, persona.getId());
-            mostrarInfo("Usuario desactivado",
-                    "Cuenta desactivada. Turnos cancelados: " + cancelados);
+            mostrarInfo("Usuario desactivado", "Cuenta desactivada. Turnos cancelados: " + cancelados);
             cargarUsuarios();
-        } catch (Exception e) {
-            mostrarError("Error al desactivar", e.getMessage());
-        }
+        } catch (Exception e) { mostrarError("Error al desactivar", e.getMessage()); }
     }
 
-
-    /** Elimina físicamente un usuario con doble confirmación. */
     private void accionEliminarUsuario(Persona persona) {
-        boolean confirmar = mostrarConfirmacion(
-                "⚠ Eliminar usuario permanentemente",
-                "Se eliminarán todos los datos de " + persona.getNombre() +
-                ". Esta acción no se puede deshacer.");
-        if (!confirmar) return;
+        if (!mostrarConfirmacion("⚠ Eliminar usuario permanentemente",
+                "Se eliminarán todos los datos de " + persona.getNombre() + ". Esta acción no se puede deshacer.")) return;
         try {
             adminService.eliminarUsuario(adminId, persona.getId());
             mostrarInfo("Usuario eliminado", "El usuario fue eliminado del sistema.");
             cargarUsuarios();
-        } catch (Exception e) {
-            mostrarError("Error al eliminar", e.getMessage());
-        }
+        } catch (Exception e) { mostrarError("Error al eliminar", e.getMessage()); }
     }
 
-    /** Cancela un turno como administrador. */
     private void accionCancelarTurno(Turno turno) {
         if (adminId == 0) { mostrarError("Sin sesión", "Debes iniciar sesión como administrador."); return; }
         String usuario = turno.getUsuario() != null ? turno.getUsuario().getNombre() : "desconocido";
-        boolean confirmar = mostrarConfirmacion(
-                "Cancelar turno #" + turno.getIdTurno(),
-                "Turno de " + usuario + " el " +
-                (turno.getFechaHora() != null ? turno.getFechaHora().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")) : "—") +
-                ". ¿Confirmar cancelación?");
-        if (!confirmar) return;
+        if (!mostrarConfirmacion("Cancelar turno #" + turno.getIdTurno(),
+                "Turno de " + usuario + ". ¿Confirmar cancelación?")) return;
         try {
             adminService.cancelarTurnoComoAdmin(adminId, turno.getIdTurno());
             mostrarInfo("Turno cancelado", "El turno fue cancelado y el cupo fue liberado.");
-            cargarTurnos();
-            cargarInicio();
-        } catch (Exception e) {
-            mostrarError("Error al cancelar turno", e.getMessage());
-        }
+            cargarTurnos(); cargarInicio();
+        } catch (Exception e) { mostrarError("Error al cancelar turno", e.getMessage()); }
     }
 
-    /** Diálogo para editar nombre y capacidad de instalación. */
     private void accionEditarInstalacion(Instalacion inst) {
         if (adminId == 0) { mostrarError("Sin sesión", "Inicia sesión como administrador."); return; }
-
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Editar Instalación #" + inst.getIdInstalacion());
         dialog.setHeaderText("Modificar instalación (" + inst.getTipo() + ")");
-
         TextField txtNombre = new TextField(inst.getClass().getSimpleName());
         Spinner<Integer> spCapacidad = new Spinner<>(1, 500, inst.getCapacidadMaxima());
         spCapacidad.setEditable(true);
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10); grid.setVgap(10);
-        grid.setPadding(new Insets(20));
-        grid.add(new Label("Nombre:"),    0, 0); grid.add(txtNombre,    1, 0);
-        grid.add(new Label("Capacidad:"), 0, 1); grid.add(spCapacidad,  1, 1);
+        GridPane grid = crearGrid();
+        grid.add(new Label("Nombre:"),    0, 0); grid.add(txtNombre,   1, 0);
+        grid.add(new Label("Capacidad:"), 0, 1); grid.add(spCapacidad, 1, 1);
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
         dialog.showAndWait().ifPresent(bt -> {
             if (bt == ButtonType.OK) {
                 try {
                     adminService.editarInstalacion(adminId, inst.getIdInstalacion(),
                             txtNombre.getText().trim(), spCapacidad.getValue());
-                    mostrarInfo("Instalación actualizada",
-                            "Capacidad máxima actualizada a " + spCapacidad.getValue());
+                    mostrarInfo("Instalación actualizada", "Capacidad actualizada a " + spCapacidad.getValue());
                     cargarInstalaciones();
-                } catch (Exception e) {
-                    mostrarError("Error al editar", e.getMessage());
-                }
+                } catch (Exception e) { mostrarError("Error al editar", e.getMessage()); }
             }
         });
     }
 
-    /** Alterna cierre/apertura de una instalación. */
     private void accionCerrarInstalacion(Instalacion inst) {
         if (adminId == 0) { mostrarError("Sin sesión", "Inicia sesión como administrador."); return; }
-        boolean confirmar = mostrarConfirmacion(
-                "Cerrar instalación",
-                "¿Cerrar temporalmente la instalación " + inst.getTipo() + " #" + inst.getIdInstalacion() + "?");
-        if (!confirmar) return;
+        if (!mostrarConfirmacion("Cerrar instalación",
+                "¿Cerrar la instalación " + inst.getTipo() + " #" + inst.getIdInstalacion() + "?")) return;
         try {
             adminService.toggleCerrarInstalacion(adminId, inst.getIdInstalacion(), true);
             mostrarInfo("Instalación cerrada", "La instalación fue marcada como cerrada.");
             cargarInstalaciones();
-        } catch (Exception e) {
-            mostrarError("Error", e.getMessage());
-        }
+        } catch (Exception e) { mostrarError("Error", e.getMessage()); }
     }
 
-    /** Diálogo para editar datos de una sede. */
     private void accionEditarSede(Sede sede) {
         if (adminId == 0) { mostrarError("Sin sesión", "Inicia sesión como administrador."); return; }
-
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Editar Sede #" + sede.getIdSede());
         dialog.setHeaderText("Modificar datos de la sede");
-
         TextField txtNombre    = new TextField(safe(sede.getNombre()));
         TextField txtDireccion = new TextField(safe(sede.getDireccion()));
         TextField txtTelefono  = new TextField(safe(sede.getTelefono()));
         TextField txtEmail     = new TextField(safe(sede.getEmail()));
-
-        GridPane grid = new GridPane();
-        grid.setHgap(10); grid.setVgap(10);
-        grid.setPadding(new Insets(20));
+        GridPane grid = crearGrid();
         grid.add(new Label("Nombre:"),    0, 0); grid.add(txtNombre,    1, 0);
         grid.add(new Label("Dirección:"), 0, 1); grid.add(txtDireccion, 1, 1);
         grid.add(new Label("Teléfono:"),  0, 2); grid.add(txtTelefono,  1, 2);
         grid.add(new Label("Email:"),     0, 3); grid.add(txtEmail,     1, 3);
         dialog.getDialogPane().setContent(grid);
         dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
         dialog.showAndWait().ifPresent(bt -> {
             if (bt == ButtonType.OK) {
                 try {
@@ -707,87 +863,74 @@ public class Dashboardadmincontroller implements Initializable {
                     adminService.editarSede(adminId, sede);
                     mostrarInfo("Sede actualizada", "Los datos de la sede fueron guardados.");
                     cargarSedes();
-                } catch (Exception e) {
-                    mostrarError("Error al guardar sede", e.getMessage());
-                }
+                } catch (Exception e) { mostrarError("Error al guardar sede", e.getMessage()); }
             }
         });
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    //  DATOS DEMO (fallback sin BD)
+    //  DATOS DEMO
     // ─────────────────────────────────────────────────────────────────────────
 
     private List<Persona> crearUsuariosDemo() {
         return Arrays.asList(
                 new Usuario(1, "María García",   "maria@demo.com",  "CC", "12345678", true,  "A"),
                 new Usuario(2, "Carlos López",   "carlos@demo.com", "CC", "87654321", true,  "B"),
-                new Usuario(3, "Ana Martínez",   "ana@demo.com",    "CC", "11223344", false, "NO AFILIADO"),
                 new Administrador(10, "Admin Principal", "admin@demo.com", null, "CC", "99999999"));
     }
 
     private List<Instalacion> crearInstalacionesDemo() {
-        return Arrays.asList(
-                new Gimnasio(1, "GIMNASIO", 30, 25),
-                new Piscina(2, "PISCINA", 15, 12, 6, 1.8));
+        return Arrays.asList(new Gimnasio(1, "GIMNASIO", 30, 25), new Piscina(2, "PISCINA", 15, 12, 6, 1.8));
     }
 
     private List<Turno> crearTurnosDemo() {
         Instalacion inst1 = new Gimnasio(1, "GIMNASIO", 30, 25);
-        Instalacion inst2 = new Piscina(2, "PISCINA", 15, 12, 6, 1.8);
         Usuario u1 = new Usuario(1, "María García", "maria@demo.com", "CC", "12345678", true, "A");
-        Usuario u2 = new Usuario(2, "Carlos López", "carlos@demo.com", "CC", "87654321", true, "B");
-        Turno t1 = new Turno(1, LocalDateTime.now().plusDays(1), 60, u1, inst1);
-        Turno t2 = new Turno(2, LocalDateTime.now().plusDays(2), 45, u2, inst2);
-        Turno t3 = new Turno(3, LocalDateTime.now().minusDays(1), 30, u1, inst1);
-        try { t3.setEstado(Turno.ESTADO_COMPLETADO); } catch (Exception ignored) {}
-        return Arrays.asList(t1, t2, t3);
+        return Arrays.asList(new Turno(1, LocalDateTime.now().plusDays(1), 60, u1, inst1));
     }
 
     private List<Pago> crearPagosDemo() {
         return Arrays.asList(
-                new Pago(1L, 1, 1, new BigDecimal("35000"), "EFECTIVO",      Pago.ESTADO_COMPLETADO, LocalDateTime.now().minusDays(1)),
-                new Pago(2L, 2, 2, new BigDecimal("42000"), "TARJETA",       Pago.ESTADO_PENDIENTE,  null),
-                new Pago(3L, 3, 1, new BigDecimal("28000"), "TRANSFERENCIA", Pago.ESTADO_COMPLETADO, LocalDateTime.now().minusDays(3)));
+                new Pago(1L, 1, 1, new BigDecimal("35000"), "EFECTIVO", Pago.ESTADO_COMPLETADO, LocalDateTime.now().minusDays(1)));
     }
 
     private List<Entrenador> crearEntrenadoresDemo() {
         return Arrays.asList(
-                new Entrenador("Juan Pérez",    "juan@gym.com",   "Gimnasio", "CC", "55556666", 1),
-                new Entrenador("Laura Sánchez", "laura@swim.com", "Natación", "CC", "77778888", 2));
+                new Entrenador("Juan Pérez",    "juan@gym.com",   "Musculacion", "CC", "55556666", 1),
+                new Entrenador("Laura Sánchez", "laura@swim.com", "Natacion",    "CC", "77778888", 2));
     }
 
     private List<Sede> crearSedesDemo() {
-        return Arrays.asList(
-                new Sede(1, "Sede Norte",  "Calle 100 # 15-30", "601-555-1111", "norte@socrates.com"),
-                new Sede(2, "Sede Sur",    "Calle 40 # 68-20",  "601-555-2222", "sur@socrates.com"));
+        return Arrays.asList(new Sede(1, "Sede Norte", "Calle 100 # 15-30", "601-555-1111", "norte@socrates.com"));
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     //  UTILIDADES UI
     // ─────────────────────────────────────────────────────────────────────────
 
+    private GridPane crearGrid() {
+        GridPane grid = new GridPane();
+        grid.setHgap(10); grid.setVgap(10);
+        grid.setPadding(new Insets(20));
+        return grid;
+    }
+
     private boolean mostrarConfirmacion(String titulo, String msg) {
         Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle(titulo);
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
+        alert.setTitle(titulo); alert.setHeaderText(null); alert.setContentText(msg);
         Optional<ButtonType> result = alert.showAndWait();
         return result.isPresent() && result.get() == ButtonType.OK;
     }
 
     private void mostrarInfo(String titulo, String msg) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(titulo);
-        alert.setHeaderText(null);
-        alert.setContentText(msg);
+        alert.setTitle(titulo); alert.setHeaderText(null); alert.setContentText(msg);
         alert.showAndWait();
     }
 
     private void mostrarError(String titulo, String msg) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(titulo);
-        alert.setHeaderText(null);
+        alert.setTitle(titulo); alert.setHeaderText(null);
         alert.setContentText(msg != null ? msg : "Error desconocido.");
         alert.showAndWait();
     }
@@ -797,7 +940,5 @@ public class Dashboardadmincontroller implements Initializable {
                      "-fx-font-size: 11; -fx-padding: 3 8; -fx-background-radius: 4; -fx-cursor: hand;");
     }
 
-    private String safe(String value) {
-        return value != null ? value : "—";
-    }
+    private String safe(String value) { return value != null ? value : "—"; }
 }
