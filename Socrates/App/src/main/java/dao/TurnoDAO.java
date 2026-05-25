@@ -57,7 +57,7 @@ public class TurnoDAO implements ITurnoDAO {
 
     private static final String SQL_SELECT_BASE =
             "SELECT idTurno, fechaHora, duracionMinutos, id_usuario, " +
-            "       id_instalacion, numero_carril_assigned, estado, id_entrenador " +
+            "       id_instalacion, numero_carril_asignado, estado, id_entrenador " +
             "FROM turno ";
 
     private static final String SQL_SELECT_POR_ID     = SQL_SELECT_BASE + "WHERE idTurno = ?";
@@ -154,14 +154,44 @@ public class TurnoDAO implements ITurnoDAO {
         Connection con = conexion.conectar();
         List<Turno> lista = new ArrayList<>();
         if (con == null) return lista;
-
+        // Leer filas en memoria primero para luego resolver relaciones sin mantener
+        // el ResultSet/Connection abiertos mientras se invocan otros DAOs.
+        class Row { int idTurno; java.time.LocalDateTime fecha; int duracion; int idUsuario; int idInst; String estado; Integer carril; Integer idEntr; }
+        List<Row> rows = new ArrayList<>();
         try (PreparedStatement ps = con.prepareStatement(SQL_SELECT_TODOS);
              ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) lista.add(mapear(rs));
+            while (rs.next()) {
+                Row r = new Row();
+                r.idTurno = rs.getInt("idTurno");
+                r.fecha = rs.getTimestamp("fechaHora").toLocalDateTime();
+                r.duracion = rs.getInt("duracionMinutos");
+                r.idUsuario = rs.getInt("id_usuario");
+                r.idInst = rs.getInt("id_instalacion");
+                r.estado = rs.getString("estado");
+                int carr = rs.getInt("numero_carril_asignado"); r.carril = rs.wasNull() ? null : carr;
+                int idEnt = rs.getInt("id_entrenador"); r.idEntr = rs.wasNull() ? null : idEnt;
+                rows.add(r);
+            }
         } catch (SQLException e) {
             throw new RuntimeException("Error al listar turnos", e);
         } finally {
             conexion.desconectar();
+        }
+
+        for (Row r : rows) {
+            // Resolver relaciones usando los DAOs (pueden abrir/cerrar conexión)
+            entidades.Persona personaRaw = personaDAO.buscarPorId(r.idUsuario)
+                    .orElseThrow(() -> new RuntimeException("Usuario id=" + r.idUsuario + " no encontrado al mapear Turno."));
+            if (!(personaRaw instanceof Usuario))
+                throw new RuntimeException("Se esperaba Usuario para turno, pero id=" + r.idUsuario + " es " + personaRaw.getClass().getSimpleName());
+            Instalacion instalacion = instalacionDAO.buscarPorId(r.idInst)
+                    .orElseThrow(() -> new RuntimeException("Instalación id=" + r.idInst + " no encontrada al mapear Turno."));
+
+            Turno turno = new Turno(r.idTurno, r.fecha, r.duracion, (Usuario) personaRaw, instalacion);
+            turno.setNumeroCarrilAsignado(r.carril);
+            turno.setEstado(r.estado);
+            if (r.idEntr != null) entrenadorDAO.buscarPorId(r.idEntr).ifPresent(turno::setEntrenador);
+            lista.add(turno);
         }
         return lista;
     }
@@ -224,7 +254,7 @@ public class TurnoDAO implements ITurnoDAO {
         int           idInst       = rs.getInt("id_instalacion");
         String        estado       = rs.getString("estado");
 
-        int     carrilRaw   = rs.getInt("numero_carril_assigned");
+        int     carrilRaw   = rs.getInt("numero_carril_asignado");
         Integer carril      = rs.wasNull() ? null : carrilRaw;
 
         int     idEntRaw    = rs.getInt("id_entrenador");
@@ -258,15 +288,43 @@ public class TurnoDAO implements ITurnoDAO {
         List<Turno> lista = new ArrayList<>();
         if (con == null) return lista;
 
+        class Row { int idTurno; java.time.LocalDateTime fecha; int duracion; int idUsuario; int idInst; String estado; Integer carril; Integer idEntr; }
+        List<Row> rows = new ArrayList<>();
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, param);
             try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) lista.add(mapear(rs));
+                while (rs.next()) {
+                    Row r = new Row();
+                    r.idTurno = rs.getInt("idTurno");
+                    r.fecha = rs.getTimestamp("fechaHora").toLocalDateTime();
+                    r.duracion = rs.getInt("duracionMinutos");
+                    r.idUsuario = rs.getInt("id_usuario");
+                    r.idInst = rs.getInt("id_instalacion");
+                    r.estado = rs.getString("estado");
+                    int carr = rs.getInt("numero_carril_asignado"); r.carril = rs.wasNull() ? null : carr;
+                    int idEnt = rs.getInt("id_entrenador"); r.idEntr = rs.wasNull() ? null : idEnt;
+                    rows.add(r);
+                }
             }
         } catch (SQLException e) {
             throw new RuntimeException("Error al listar turnos", e);
         } finally {
             conexion.desconectar();
+        }
+
+        for (Row r : rows) {
+            entidades.Persona personaRaw = personaDAO.buscarPorId(r.idUsuario)
+                    .orElseThrow(() -> new RuntimeException("Usuario id=" + r.idUsuario + " no encontrado al mapear Turno."));
+            if (!(personaRaw instanceof Usuario))
+                throw new RuntimeException("Se esperaba Usuario para turno, pero id=" + r.idUsuario + " es " + personaRaw.getClass().getSimpleName());
+            Instalacion instalacion = instalacionDAO.buscarPorId(r.idInst)
+                    .orElseThrow(() -> new RuntimeException("Instalación id=" + r.idInst + " no encontrada al mapear Turno."));
+
+            Turno turno = new Turno(r.idTurno, r.fecha, r.duracion, (Usuario) personaRaw, instalacion);
+            turno.setNumeroCarrilAsignado(r.carril);
+            turno.setEstado(r.estado);
+            if (r.idEntr != null) entrenadorDAO.buscarPorId(r.idEntr).ifPresent(turno::setEntrenador);
+            lista.add(turno);
         }
         return lista;
     }

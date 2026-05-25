@@ -12,7 +12,6 @@ socratesGui\Dashboardadmincontroller.class
 dao\IHistorialCitasDAO.class
 dao\IPagoDAO.class
 database\Conexion.class
-entidades\Pagos.class
 entidades\Instalacion.class
 socratesGui\Dashboardusuariocontroller.class
 negocio\PagoControl.class
@@ -36,7 +35,6 @@ module-info.class
 dao\ISedeDAO.class
 dao\EntrenadorDAO.class
 entidades\Sede.class
-socratesGui\PasarelaPagosLauncher.class
 dao\ITurnoDAO.class
 util\ConfigLoader.class
 LogicaCita\ValidadorTurno.class

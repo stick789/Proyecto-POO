@@ -60,16 +60,16 @@ public class EntrenadorDAO implements IEntrenadorDAO {
 
     private static final String SQL_SELECT_PAGINADO =
             SQL_SELECT_BASE +
-            "WHERE u.activo = 1 AND p.nombre LIKE ? " +
+            "WHERE p.nombre LIKE ? " +
             "ORDER BY p.nombre ASC LIMIT ?, ?";
 
     private static final String SQL_SELECT_POR_ESPECIALIDAD =
-            SQL_SELECT_BASE + "WHERE u.activo = 1 AND e.especialidad = ?";
+            SQL_SELECT_BASE + "WHERE e.especialidad = ?";
 
     private static final String SQL_COUNT_ACTIVOS =
             "SELECT COUNT(*) FROM entrenador e " +
             "JOIN persona p ON e.numDocumento = p.numdocumento " +
-            "JOIN usuarios u ON u.id_persona = p.id_persona WHERE u.activo = 1";
+            "JOIN usuarios u ON u.id_persona = p.id_persona";
 
     // ── UPDATE ────────────────────────────────────────────────────────────────
 
@@ -264,9 +264,11 @@ public class EntrenadorDAO implements IEntrenadorDAO {
         List<Entrenador> lista = new ArrayList<>();
         if (con == null) return lista;
 
+        int pagina = Math.max(1, numPagina);
+
         try (PreparedStatement ps = con.prepareStatement(SQL_SELECT_PAGINADO)) {
             ps.setString(1, "%" + (texto == null ? "" : texto) + "%");
-            ps.setInt(2, (numPagina - 1) * totalPorPagina);
+            ps.setInt(2, (pagina - 1) * totalPorPagina);
             ps.setInt(3, totalPorPagina);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) lista.add(mapear(rs));

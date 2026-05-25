@@ -83,8 +83,9 @@ public class Historial_citas {
         String normalizado = estado.trim().toUpperCase();
         if (!Turno.ESTADO_RESERVADO.equals(normalizado)
                 && !Turno.ESTADO_CANCELADO.equals(normalizado)
-                && !Turno.ESTADO_COMPLETADO.equals(normalizado)) {
-            throw new IllegalArgumentException("Estado invalido. Valores permitidos: RESERVADO, CANCELADO, COMPLETADO");
+                && !Turno.ESTADO_COMPLETADO.equals(normalizado)
+                && !"FALLIDO".equals(normalizado)) {
+            throw new IllegalArgumentException("Estado invalido. Valores permitidos: RESERVADO, CANCELADO, COMPLETADO, FALLIDO");
         }
 
         return normalizado;

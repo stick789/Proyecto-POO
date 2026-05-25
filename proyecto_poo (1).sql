@@ -122,6 +122,14 @@ CREATE TABLE `pagos` (
   `estadoPago` varchar(30) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- ALTERS para compatibilidad con la versión actual del código
+-- Agregar columnas faltantes si la tabla fue creada por una versión antigua
+ALTER TABLE `pagos` ADD COLUMN IF NOT EXISTS `id_turno` INT NULL;
+ALTER TABLE `pagos` ADD COLUMN IF NOT EXISTS `id_usuario` INT NULL;
+ALTER TABLE `pagos` ADD COLUMN IF NOT EXISTS `fechaPago` DATETIME NULL DEFAULT CURRENT_TIMESTAMP;
+ALTER TABLE `pagos` ADD COLUMN IF NOT EXISTS `epayco_session_id` VARCHAR(120) NULL;
+ALTER TABLE `pagos` ADD COLUMN IF NOT EXISTS `epayco_ref_payco` VARCHAR(120) NULL;
+
 -- --------------------------------------------------------
 
 --
@@ -142,7 +150,23 @@ CREATE TABLE `persona` (
 
 INSERT INTO `persona` (`id_persona`, `nombre`, `email`, `tipodocumento`, `numdocumento`) VALUES
 (1, 'Admin Principal', 'admin@test.com', 'CC', '11111111'),
-(2, 'Usuario Prueba', 'usuario@test.com', 'CC', '22222222');
+(2, 'Usuario Prueba', 'usuario@test.com', 'CC', '22222222'),
+(3, 'Laura Pineda', 'laura.pineda@test.com', 'CC', '33333333'),
+(4, 'Andres Rojas', 'andres.rojas@test.com', 'CC', '44444444'),
+(5, 'Sofia Gomez', 'sofia.gomez@test.com', 'CC', '55555555'),
+(6, 'Carlos Mejia', 'carlos.mejia@test.com', 'CC', '66666666');
+
+-- --------------------------------------------------------
+
+--
+-- Volcado de datos para la tabla `entrenador`
+--
+
+INSERT INTO `entrenador` (`idEntrenador`, `especialidad`, `numDocumento`, `idInstalacion`) VALUES
+(1, 'Natación', '33333333', 2),
+(2, 'Natación', '44444444', 2),
+(3, 'Gimnasio', '55555555', 3),
+(4, 'Gimnasio', '66666666', 3);
 
 -- --------------------------------------------------------
 
@@ -244,7 +268,11 @@ CREATE TABLE `usuarios` (
 
 INSERT INTO `usuarios` (`idusuario`, `id_persona`, `contraseña`, `categoria`, `esAfiliado`, `id_rol`) VALUES
 (1, 1, '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', NULL, 0, 2),
-(2, 2, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', 'A', 1, 1);
+(2, 2, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', 'A', 1, 1),
+(3, 3, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3),
+(4, 4, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3),
+(5, 5, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3),
+(6, 6, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3);
 
 --
 -- Índices para tablas volcadas

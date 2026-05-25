@@ -1,5 +1,7 @@
 package LogicaCita;
 
+import java.time.LocalDate;
+
 import dao.IHistorialCitasDAO;
 import dao.ITurnoDAO;
 import entidades.Entrenador;
@@ -30,6 +32,8 @@ import negocio.PersonaControl;
  *    AHORA: public void asignarEntrenadorATurno(...)  ← camelCase (convención de método)
  */
 public class ServicioAsignarEntrenador {
+
+    private static final int MAX_TURNOS_POR_ENTRENADOR_POR_DIA = 5;
 
     private final ITurnoDAO          turnoDAO;
     private final IHistorialCitasDAO historialDAO;
@@ -71,6 +75,12 @@ public class ServicioAsignarEntrenador {
                 "El entrenador '" + entrenador.getNombre() +
                 "' no tiene la especialidad requerida para: " + instalacion.getTipo());
 
+        if (cantidadTurnosDelDia(entrenador.getId(), turno.getFechaHora().toLocalDate()) >= MAX_TURNOS_POR_ENTRENADOR_POR_DIA) {
+            throw new IllegalStateException(
+                "El entrenador ya alcanzó el máximo de " + MAX_TURNOS_POR_ENTRENADOR_POR_DIA +
+                " turnos para ese día.");
+        }
+
         // Asignar en memoria y persistir
         turno.setEntrenador(entrenador);
 
@@ -95,5 +105,19 @@ public class ServicioAsignarEntrenador {
             return "Natación".equalsIgnoreCase(especialidad);
         else
             return "Gimnasio".equalsIgnoreCase(especialidad);
+    }
+
+    private int cantidadTurnosDelDia(int idEntrenador, LocalDate fecha) {
+        int total = 0;
+        for (Turno turno : turnoDAO.listarTodos()) {
+            if (turno == null || turno.getFechaHora() == null || turno.getEntrenador() == null) {
+                continue;
+            }
+            if (turno.getEntrenador().getId() == idEntrenador
+                    && turno.getFechaHora().toLocalDate().equals(fecha)) {
+                total++;
+            }
+        }
+        return total;
     }
 }

@@ -5,27 +5,36 @@ import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 
+import entidades.Historial_citas;
+import entidades.Instalacion;
 import entidades.Pago;
+import entidades.Turno;
 import service.EpaycoService;
+import socratesGui.SesionActual;
 import util.ConfigLoader;
 
 public class PagosOnlineDAO {
     private final EpaycoService epaycoService;
     private final PagoDAO pagoDAO;
+    private final TurnoDAO turnoDAO;
+    private final InstalacionDAO instalacionDAO;
 
     public PagosOnlineDAO(String publicKey, String privateKey, PagoDAO pagoDAO) {
         this.epaycoService = new EpaycoService(publicKey, privateKey);
         this.pagoDAO = pagoDAO;
+        this.turnoDAO = new TurnoDAO(new PersonaDAO(), new InstalacionDAO(), new EntrenadorDAO());
+        this.instalacionDAO = new InstalacionDAO();
     }
 
 
 
     public String iniciarPagoConTarjeta(int idTurno, double montoTotal, String descripcion) throws Exception {
         // 1. Crear el pago en BD con estado PENDIENTE
-        // Usar el constructor para crear un pago nuevo: (idTurno, idUsuario, monto, metodoPago, estadoPago)
-        // No tenemos idUsuario aquí, lo inicializamos a 0 (usuario desconocido en este contexto).
-        Pago pago = new Pago(idTurno, 0, BigDecimal.valueOf(montoTotal), "TARJETA_ONLINE", Pago.ESTADO_PENDIENTE);
-        int idPago = pagoDAO.registrarPago(pago); // este método debe devolver el ID generado
+        // Tomar el usuario autenticado para que el pago quede visible en "Mis Pagos".
+        int idUsuario = SesionActual.getUsuario() != null ? SesionActual.getUsuario().getId() : 0;
+        Pago pago = new Pago(idTurno, idUsuario, BigDecimal.valueOf(montoTotal), "TARJETA_ONLINE", Pago.ESTADO_PENDIENTE);
+        pagoDAO.insertar(pago);
+        int idPago = (int) pago.getIdPago();
 
         // 2. Preparar datos para ePayco
         Map<String, Object> sessionData = new HashMap<>();
@@ -72,17 +81,105 @@ public class PagosOnlineDAO {
                 .orElseThrow(() -> new Exception("No existe un pago con id " + idPago));
 
         if (pago.getEpaycoSessionId() == null || pago.getEpaycoSessionId().isBlank()) {
-            throw new Exception("No hay sesión de pago asociada");
+            marcarPagoComoFallido(pago, idPago, "No hay sesión de pago asociada");
+            return "FALLIDO";
         }
 
-        String estado = epaycoService.consultarEstado(pago.getEpaycoSessionId());
+        String estado;
+        try {
+            estado = epaycoService.consultarEstado(pago.getEpaycoSessionId());
+        } catch (Exception ex) {
+            marcarPagoComoFallido(pago, idPago, "Error consultando ePayco: " + ex.getMessage());
+            return "FALLIDO";
+        }
 
-        if ("Aprobado".equalsIgnoreCase(estado)) {
+        String normalizado = estado != null ? estado.trim().toLowerCase() : "";
+
+        if ("aprobado".equals(normalizado)) {
             pagoDAO.actualizarEstado(idPago, Pago.ESTADO_COMPLETADO);
-        } else if ("Rechazado".equalsIgnoreCase(estado)) {
+            // Registrar evento en historial: pago aprobado
+            try {
+                HistorialCitasDAO histDao = new HistorialCitasDAO();
+                Historial_citas h = new Historial_citas();
+                h.setIdTurno(String.valueOf(pago.getIdTurno()));
+                h.setIdUsuario(pago.getIdUsuario());
+                h.setIdInstalacion("0");
+                h.setEstado(Turno.ESTADO_COMPLETADO);
+                h.setDetalle("Pago APROBADO (idPago=" + idPago + ")");
+                histDao.insertar(h);
+            } catch (Exception ignore) {
+                // no interrumpimos el flujo por fallos al registrar el historial
+            }
+        } else if (normalizado.contains("rechaz") || normalizado.contains("fail") || normalizado.contains("error") || normalizado.contains("desconoc")) {
             pagoDAO.actualizarEstado(idPago, Pago.ESTADO_FALLIDO);
+            cancelarTurnoAsociado(pago, idPago, "Pago rechazado por ePayco");
+            // Registrar evento en historial: pago fallido
+            try {
+                HistorialCitasDAO histDao = new HistorialCitasDAO();
+                Historial_citas h = new Historial_citas();
+                h.setIdTurno(String.valueOf(pago.getIdTurno()));
+                h.setIdUsuario(pago.getIdUsuario());
+                h.setIdInstalacion("0");
+                h.setEstado("FALLIDO");
+                h.setDetalle("Pago FALLIDO (idPago=" + idPago + ")");
+                histDao.insertar(h);
+            } catch (Exception ignore) {
+                // no interrumpimos el flujo por fallos al registrar el historial
+            }
+            return "FALLIDO";
+        } else if (!normalizado.contains("pend")) {
+            marcarPagoComoFallido(pago, idPago, "Estado no reconocido por ePayco: " + estado);
+            return "FALLIDO";
         }
 
         return estado;
+    }
+
+    private void marcarPagoComoFallido(Pago pago, int idPago, String detalle) {
+        try {
+            pagoDAO.actualizarEstado(idPago, Pago.ESTADO_FALLIDO);
+            cancelarTurnoAsociado(pago, idPago, detalle);
+            HistorialCitasDAO histDao = new HistorialCitasDAO();
+            Historial_citas h = new Historial_citas();
+            h.setIdTurno(String.valueOf(pago.getIdTurno()));
+            h.setIdUsuario(pago.getIdUsuario());
+            h.setIdInstalacion("0");
+            h.setEstado("FALLIDO");
+            h.setDetalle("Pago FALLIDO (idPago=" + idPago + ") - " + detalle);
+            histDao.insertar(h);
+        } catch (Exception ignore) {
+            // no interrumpimos el flujo por fallos al registrar el historial
+        }
+    }
+
+    private void cancelarTurnoAsociado(Pago pago, int idPago, String detalle) {
+        try {
+            Turno turno = turnoDAO.buscarPorId(pago.getIdTurno()).orElse(null);
+            if (turno == null) {
+                return;
+            }
+
+            if (!Turno.ESTADO_CANCELADO.equalsIgnoreCase(turno.getEstado())) {
+                turno.setEstado(Turno.ESTADO_CANCELADO);
+                turnoDAO.actualizarEstado(turno.getIdTurno(), Turno.ESTADO_CANCELADO);
+
+                Instalacion instalacion = turno.getInstalacion();
+                if (instalacion != null) {
+                    instalacion.liberarCupo();
+                    instalacionDAO.actualizarAforo(instalacion.getIdInstalacion(), instalacion.getAforoActual());
+                }
+
+                HistorialCitasDAO histDao = new HistorialCitasDAO();
+                Historial_citas h = new Historial_citas();
+                h.setIdTurno(String.valueOf(turno.getIdTurno()));
+                h.setIdUsuario(turno.getUsuario() != null ? turno.getUsuario().getId() : pago.getIdUsuario());
+                h.setIdInstalacion(turno.getInstalacion() != null ? String.valueOf(turno.getInstalacion().getIdInstalacion()) : "0");
+                h.setEstado(Turno.ESTADO_CANCELADO);
+                h.setDetalle("Turno cancelado automáticamente por fallo de pago (idPago=" + idPago + "). " + detalle);
+                histDao.insertar(h);
+            }
+        } catch (Exception ignore) {
+            // no interrumpimos el flujo por fallos al cancelar el turno
+        }
     }
 }

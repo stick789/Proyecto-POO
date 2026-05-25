@@ -5,6 +5,7 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.Timer;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -18,6 +19,7 @@ import dao.TurnoDAO;
 import entidades.Pago;
 import entidades.Turno;
 import javafx.application.HostServices;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
@@ -43,8 +45,17 @@ public class PasarelaPagosController {
     private Integer idPagoGenerado = null;
     private double totalTurno = 0.0;
     private HttpServer checkoutServer;
+    private Timer verificationTimer;
+    private boolean pagoFinalizado = false;
+    private boolean pagoIniciado = false;
 
-    private static final Integer PRUEBA_TURNO_ID = 1;
+    private void cerrarPorFallo(String motivo) {
+        pagoFinalizado = true;
+        txtLog.appendText("❌ " + motivo + "\n");
+        mostrarAlerta("Pago fallido", motivo);
+        cerrarVentana();
+    }
+ 
 
     public void setTurno(Turno turno) {
         this.turnoActual = turno;
@@ -54,8 +65,49 @@ public class PasarelaPagosController {
             this.totalTurno = total;
             lblTotal.setText("$ " + String.format("%,.2f", total));
             lblDescripcion.setText("Pago turno #" + turno.getIdTurno());
+            txtLog.appendText("ℹ️ Turno cargado. Presiona 'PAGAR CON TARJETA' para abrir ePayco.\n");
         }
     }
+//Metodo para verificar el pago cada cierto tiempo
+    private void iniciarVerificacionAutomatica(){
+        if (verificationTimer != null) {
+            verificationTimer.cancel();
+        }
+        verificationTimer = new Timer(true);
+        verificationTimer.scheduleAtFixedRate(new java.util.TimerTask() {
+            @Override
+            public void run() {
+                if (pagoFinalizado) {
+                    verificationTimer.cancel();
+                    return;
+                }
+                try {
+                    if (idPagoGenerado == null) {
+                        idPagoGenerado = obtenerIdPagoPorTurno(turnoActual.getIdTurno());
+                    }
+                    if(idPagoGenerado != null && idPagoGenerado != -1) {
+                        String estado = pagosOnlineDAO.verificarEstado(idPagoGenerado);
+                        Platform.runLater(() -> {
+                            txtLog.appendText("🔄 Verificación automática: " + estado + "\n");
+                            if ("Aprobado".equals(estado)) {
+                                pagoFinalizado = true;
+                                txtLog.appendText("✅ Pago confirmado por verificación automática.\n");
+                                mostrarAlerta("Éxito", "El pago ha sido APROBADO.");
+                                cerrarVentana();
+                            } else if ("Rechazado".equals(estado) || "FALLIDO".equalsIgnoreCase(estado)) {
+                                cerrarPorFallo("El pago fue rechazado por verificación automática.");
+                            }
+                        });
+                    }
+                    // Si no hay pago generado aún, o si el estado es pendiente, seguimos esperando.
+                }catch (Exception e) {
+                    Platform.runLater(() -> cerrarPorFallo("Error en verificación automática: " + e.getMessage())); 
+                }
+            }
+        }, 3000, 3000); // Verificar cada 3 segundos
+    }
+
+
 
     @FXML
     public void initialize() {
@@ -68,15 +120,15 @@ public class PasarelaPagosController {
         btnCerrar.setOnAction(event -> cerrarVentana());
         txtLog.appendText("✅ Controlador listo. Esperando acción...\n");
 
-        if (PRUEBA_TURNO_ID != null) {
+        if (turnoActual != null) {
             try {
                 TurnoDAO turnoDAO = new TurnoDAO(new PersonaDAO(), new InstalacionDAO(), new EntrenadorDAO());
-                Optional<Turno> opt = turnoDAO.buscarPorId(PRUEBA_TURNO_ID);
+                Optional<Turno> opt = turnoDAO.buscarPorId(turnoActual.getIdTurno());
                 if (opt.isPresent()) {
                     setTurno(opt.get());
-                    txtLog.appendText("🔎 Turno de prueba cargado: id=" + PRUEBA_TURNO_ID + "\n");
+                    txtLog.appendText("🔎 Turno de prueba cargado: id=" + turnoActual.getIdTurno() + "\n");
                 } else {
-                    txtLog.appendText("⚠️ No se encontró turno de prueba id=" + PRUEBA_TURNO_ID + " en BD.\n");
+                    txtLog.appendText("⚠️ No se encontró turno de prueba id=" + turnoActual.getIdTurno() + " en BD.\n");
                 }
             } catch (Exception e) {
                 txtLog.appendText("🔴 Error cargando turno de prueba: " + e.getMessage() + "\n");
@@ -86,6 +138,10 @@ public class PasarelaPagosController {
 
     private void iniciarPago() {
         try {
+            if (pagoIniciado) {
+                txtLog.appendText("⚠️ El pago ya ha sido iniciado para este turno.\n");
+                return;
+            }
             if (turnoActual == null) {
                 mostrarAlerta("Error", "No hay un turno seleccionado.");
                 return;
@@ -99,6 +155,7 @@ public class PasarelaPagosController {
 
             String descripcion = lblDescripcion.getText();
             String sessionId = pagosOnlineDAO.iniciarPagoConTarjeta(turnoActual.getIdTurno(), total, descripcion);
+            pagoIniciado = true;
             String miepaycoUrl = ConfigLoader.get("epayco.miepaycoUrl");
             if (miepaycoUrl == null || miepaycoUrl.isBlank()) {
                 miepaycoUrl = "https://dquintero1582228.epayco.me";
@@ -123,6 +180,7 @@ public class PasarelaPagosController {
 
             txtLog.appendText("🟢 Pasarela abierta en navegador. Session ID: " + sessionId + "\n");
             mostrarAlerta("Información", "La pasarela se abrió en tu navegador.\nCompleta el pago y luego presiona 'VERIFICAR PAGO'.");
+            iniciarVerificacionAutomatica();
         } catch (Exception e) {
             txtLog.appendText("🔴 Error al iniciar pago: " + e.getMessage() + "\n");
             mostrarAlerta("Error", "No se pudo iniciar el pago: " + e.getMessage());
@@ -154,20 +212,22 @@ public class PasarelaPagosController {
             if ("Aprobado".equals(estado)) {
                 txtLog.appendText("✅ ¡Pago confirmado! Estado actualizado en BD.\n");
                 mostrarAlerta("Éxito", "El pago ha sido APROBADO.");
-            } else if ("Rechazado".equals(estado)) {
-                txtLog.appendText("❌ Pago rechazado.\n");
-                mostrarAlerta("Rechazado", "El pago fue rechazado.");
+            } else if ("Rechazado".equals(estado) || "FALLIDO".equalsIgnoreCase(estado)) {
+                cerrarPorFallo("El pago fue rechazado.");
             } else {
                 txtLog.appendText("⏳ Pago pendiente. Intente más tarde.\n");
                 mostrarAlerta("Pendiente", "El pago aún no ha sido confirmado.");
             }
         } catch (Exception e) {
-            txtLog.appendText("🔴 Error verificación: " + e.getMessage() + "\n");
-            mostrarAlerta("Error", "Error al verificar: " + e.getMessage());
+            cerrarPorFallo("Error al verificar: " + e.getMessage());
         }
     }
 
     private void cerrarVentana() {
+        if (verificationTimer != null) {
+            verificationTimer.cancel();
+            verificationTimer = null;
+        }
         if (checkoutServer != null) {
             checkoutServer.stop(0);
             checkoutServer = null;

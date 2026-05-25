@@ -79,7 +79,7 @@ public class ServicioTurnos {
 
         Integer carrilFinal = numeroCarril;
         if (instalacion instanceof Piscina && carrilFinal == null) {
-            carrilFinal = asignarCarrilAutomatico((Piscina) instalacion);
+            carrilFinal = asignarCarrilAutomatico((Piscina) instalacion, fechaHora, duracionMinutos);
         }
 
         Turno turno = reservarTurnoInterno(fechaHora, duracionMinutos, usuario, instalacion, carrilFinal);
@@ -108,7 +108,7 @@ public class ServicioTurnos {
         validador.validarReserva(instalacion, fechaHora, duracionMinutos,
             turnosActivosUsuario, reservasActivasInstalacion);
 
-        Integer carrilValidado = validarCarril(instalacion, numeroCarril);
+        Integer carrilValidado = validarCarril(instalacion, numeroCarril, fechaHora, duracionMinutos);
         instalacion.descontarCupo();
 
         // id temporal 0 — turnoDAO.insertar() asigna el id real de la BD
@@ -263,14 +263,15 @@ public class ServicioTurnos {
         instalacionDAO.actualizarAforo(instalacion.getIdInstalacion(), instalacion.getAforoActual());
     }
 
-    private Integer validarCarril(Instalacion instalacion, Integer numeroCarril) {
+    private Integer validarCarril(Instalacion instalacion, Integer numeroCarril,
+                                  LocalDateTime fechaHora, int duracionMinutos) {
         if (instalacion instanceof Piscina) {
             Piscina piscina = (Piscina) instalacion;
             if (numeroCarril == null)
                 throw new IllegalArgumentException("Debe asignar un carril para reservas de piscina.");
             if (numeroCarril <= 0 || numeroCarril > piscina.getNumeroCarriles())
                 throw new IllegalArgumentException("Carril invalido. Rango: 1 a " + piscina.getNumeroCarriles());
-            if (contarReservasActivasEnCarril(piscina, numeroCarril) >= maxPersonasPorCarril)
+            if (contarReservasActivasEnCarril(piscina, numeroCarril, fechaHora, duracionMinutos) >= maxPersonasPorCarril)
                 throw new IllegalStateException(
                     "El carril " + numeroCarril + " ya alcanzo el maximo de " + maxPersonasPorCarril + " personas.");
             return numeroCarril;
@@ -280,11 +281,11 @@ public class ServicioTurnos {
         return null;
     }
 
-    private int asignarCarrilAutomatico(Piscina piscina) {
+    private int asignarCarrilAutomatico(Piscina piscina, LocalDateTime fechaHora, int duracionMinutos) {
         int carriles = piscina.getNumeroCarriles();
         if (carriles <= 0) throw new IllegalStateException("La piscina no tiene carriles configurados.");
         for (int carril = 1; carril <= carriles; carril++) {
-            if (contarReservasActivasEnCarril(piscina, carril) < maxPersonasPorCarril) return carril;
+            if (contarReservasActivasEnCarril(piscina, carril, fechaHora, duracionMinutos) < maxPersonasPorCarril) return carril;
         }
         throw new IllegalStateException("No hay carriles disponibles.");
     }
@@ -293,13 +294,23 @@ public class ServicioTurnos {
      * Cuenta reservas activas en un carril consultando la BD vía turnoDAO.
      * piscina.getTurnos() fue eliminado de Instalacion — se usa el DAO directamente.
      */
-    private int contarReservasActivasEnCarril(Piscina piscina, int numeroCarril) {
+    private int contarReservasActivasEnCarril(Piscina piscina, int numeroCarril,
+                                              LocalDateTime fechaHora, int duracionMinutos) {
         // getIdInstalacion() ya devuelve int — sin parseInt()
         List<Turno> reservas = turnoDAO.listarReservadosPorInstalacion(piscina.getIdInstalacion());
         int count = 0;
         for (Turno t : reservas) {
             Integer c = t.getNumeroCarrilAsignado();
-            if (c != null && c == numeroCarril) count++;
+            if (c != null && c == numeroCarril) {
+                if (fechaHora == null || t.getFechaHora() == null) {
+                    count++;
+                } else {
+                    LocalDateTime finExistente = t.getFechaHora().plusMinutes(t.getDuracionMinutos());
+                    LocalDateTime finNueva = fechaHora.plusMinutes(duracionMinutos);
+                    boolean seSolapan = fechaHora.isBefore(finExistente) && finNueva.isAfter(t.getFechaHora());
+                    if (seSolapan) count++;
+                }
+            }
         }
         return count;
     }

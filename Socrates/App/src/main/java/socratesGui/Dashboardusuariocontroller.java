@@ -13,6 +13,7 @@ import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
 import LogicaCita.ConsultaTurnos;
+import LogicaCita.ServicioAsignarEntrenador;
 import LogicaCita.ServicioTurnos;
 import dao.EntrenadorDAO;
 import dao.HistorialCitasDAO;
@@ -34,12 +35,15 @@ import javafx.animation.FadeTransition;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.ComboBox;
@@ -55,6 +59,7 @@ import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
+import negocio.PersonaControl;
 
 public class Dashboardusuariocontroller implements Initializable {
 
@@ -144,6 +149,9 @@ public class Dashboardusuariocontroller implements Initializable {
     private Instalacion instalacionSeleccionada = null;
     private boolean     quiereEntrenador        = false;
     private Entrenador  entrenadorAsignado      = null;
+    private Stage       mapaPiscinaStage        = null;
+    private Canvas      mapaPiscinaCanvas       = null;
+    private Piscina     mapaPiscinaActual       = null;
     private static final DateTimeFormatter FMT_DISPLAY =
             DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
@@ -154,6 +162,7 @@ public class Dashboardusuariocontroller implements Initializable {
     private PagoDAO         pagoDAO;
     private ConsultaTurnos  consultaTurnos;
     private ServicioTurnos  servicioTurnos;
+    private ServicioAsignarEntrenador servicioAsignarEntrenador;
 
     // ─────────────────────────────────────────────────────────────────────────
     //  INITIALIZE
@@ -173,6 +182,7 @@ public class Dashboardusuariocontroller implements Initializable {
             pagoDAO        = new PagoDAO();
             consultaTurnos = new ConsultaTurnos(turnoDAO, instalacionDAO);
             servicioTurnos = new ServicioTurnos(turnoDAO, histDAO, instalacionDAO);
+            servicioAsignarEntrenador = new ServicioAsignarEntrenador(turnoDAO, histDAO, new PersonaControl());
 
             // Sidebar info
             Persona user = SesionActual.getUsuario();
@@ -232,9 +242,18 @@ public class Dashboardusuariocontroller implements Initializable {
                 "15 min", "30 min", "45 min", "60 min", "90 min", "120 min"));
         cmbDuracion.setValue("60 min");
 
-        dateFecha.valueProperty().addListener((obs, ov, nv) -> actualizarResumen());
-        cmbHora.valueProperty().addListener((obs, ov, nv) -> actualizarResumen());
-        cmbDuracion.valueProperty().addListener((obs, ov, nv) -> actualizarResumen());
+        dateFecha.valueProperty().addListener((obs, ov, nv) -> {
+            actualizarResumen();
+            actualizarOcupacionCarril();
+        });
+        cmbHora.valueProperty().addListener((obs, ov, nv) -> {
+            actualizarResumen();
+            actualizarOcupacionCarril();
+        });
+        cmbDuracion.valueProperty().addListener((obs, ov, nv) -> {
+            actualizarResumen();
+            actualizarOcupacionCarril();
+        });
 
         // Listener: update lane occupancy when carril changes
         cmbCarril.valueProperty().addListener((obs, ov, nv) -> actualizarOcupacionCarril());
@@ -476,6 +495,35 @@ public class Dashboardusuariocontroller implements Initializable {
         panelEntrenador.setVisible(true);
         panelEntrenador.setManaged(true);
     }
+private void abrirPasarelaPago(Turno turno) {
+        try {
+            //Cargar FMXL
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/Interface/pasarelaPagos.fxml"));
+            Parent root = loader.load();
+
+            PasarelaPagosController controller = loader.getController();
+            // Pasar el turno - iniciara automaticamente el proceso de pago
+            controller.setTurno(turno);
+            // Pasar HostServices para poder abrir el navegador desde el controlador
+            controller.setHostServices(App.getAppHostServices());
+            //Configurar y mostrar ventana modal
+            Stage stage = new Stage();
+            stage.setTitle("Pasarela de Pagos - Turno #" + turno.getIdTurno());
+            stage.setScene(new Scene(root));
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.show();
+        }catch (Exception e) {
+            mostrarAlerta("Error", "No se pudo abrir la pasarela de pagos: " + e.getMessage());
+        }
+    }
+    private void mostrarAlerta(String titulo, String mensaje) {
+        Alert alerta = new Alert(Alert.AlertType.ERROR);
+        alerta.initStyle(StageStyle.UTILITY);
+        alerta.setTitle(titulo != null ? titulo : "Error");
+        alerta.setHeaderText(null);
+        alerta.setContentText(mensaje != null ? mensaje : "Ocurrió un error inesperado.");
+        alerta.showAndWait();
+    }
 
     @FXML
     private void onConEntrenador() {
@@ -489,13 +537,13 @@ public class Dashboardusuariocontroller implements Initializable {
 
         // Filter coaches by the selected installation type
         String especialidad = "PISCINA".equals(instalacionSeleccionada.getTipo())
-                ? "Natación" : "Musculación";
+            ? "Natación" : "Gimnasio";
 
         try {
             List<Entrenador> entrenadores = entrenadorDAO.listarPorEspecialidad(especialidad);
             if (entrenadores == null || entrenadores.isEmpty()) {
                 // Fallback: try any available coach
-                entrenadores = entrenadorDAO.listar("", 10, 0);
+                entrenadores = entrenadorDAO.listar("", 10, 1);
             }
             if (entrenadores != null && !entrenadores.isEmpty()) {
                 entrenadorAsignado = entrenadores.get(0);
@@ -529,14 +577,64 @@ public class Dashboardusuariocontroller implements Initializable {
     private void onVerMapaPiscina() {
         if (!(instalacionSeleccionada instanceof Piscina)) return;
         Piscina piscina = (Piscina) instalacionSeleccionada;
-        int totalCarriles = piscina.getNumeroCarriles();
-        int maxPorCarril  = servicioTurnos.getMaxPersonasPorCarril();
 
-        // Count occupancy per lane using current schedules
-        int[] ocupacion = new int[totalCarriles + 1]; // 1-indexed
+        if (mapaPiscinaStage != null && mapaPiscinaStage.isShowing() && mapaPiscinaActual != null
+                && mapaPiscinaActual.getIdInstalacion() == piscina.getIdInstalacion()) {
+            refrescarMapaPiscinaAbierto();
+            mapaPiscinaStage.toFront();
+            return;
+        }
+
+        mapaPiscinaActual = piscina;
+        int totalCarriles = piscina.getNumeroCarriles();
+
+        // ── Build the popup ──────────────────────────────────────────────────
+        mapaPiscinaStage = new Stage();
+        mapaPiscinaStage.initModality(Modality.APPLICATION_MODAL);
+        mapaPiscinaStage.initStyle(StageStyle.DECORATED);
+        mapaPiscinaStage.setTitle("🏊  Mapa de Piscina Olímpica — Carriles");
+        mapaPiscinaStage.setResizable(false);
+
+        // Canvas dimensions
+        int laneW    = 80;
+        int laneH    = 340;
+        int padding  = 40;
+        int labelH   = 60;
+        int canvasW  = padding * 2 + laneW * totalCarriles + (totalCarriles - 1) * 6;
+        int canvasH  = padding * 2 + laneH + labelH;
+
+        mapaPiscinaCanvas = new Canvas(canvasW, canvasH);
+        dibujarMapaPiscina(mapaPiscinaActual, mapaPiscinaCanvas);
+
+        // Close button
+        Button btnClose = new Button("Cerrar");
+        btnClose.setStyle("-fx-background-color: #E85D04; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 8 20; -fx-background-radius: 6; -fx-cursor: hand;");
+        btnClose.setOnAction(e -> {
+            if (mapaPiscinaStage != null) {
+                mapaPiscinaStage.close();
+            }
+        });
+
+        VBox root = new VBox(8, mapaPiscinaCanvas, btnClose);
+        root.setAlignment(Pos.CENTER);
+        root.setPadding(new Insets(10));
+        root.setStyle("-fx-background-color: #FFF8F0;");
+
+        mapaPiscinaStage.setScene(new Scene(root));
+        mapaPiscinaStage.setOnHidden(e -> {
+            mapaPiscinaStage = null;
+            mapaPiscinaCanvas = null;
+            mapaPiscinaActual = null;
+        });
+        mapaPiscinaStage.showAndWait();
+    }
+
+    private int[] calcularOcupacionPiscina(Piscina piscina) {
+        int totalCarriles = piscina.getNumeroCarriles();
+        int[] ocupacion = new int[totalCarriles + 1];
+
         try {
-            List<Turno> reservados = turnoDAO.listarReservadosPorInstalacion(
-                    piscina.getIdInstalacion());
+            List<Turno> reservados = turnoDAO.listarReservadosPorInstalacion(piscina.getIdInstalacion());
             LocalDateTime fh = obtenerFechaHoraSeleccionada();
             int dur = parseDuracion();
             for (Turno t : reservados) {
@@ -549,16 +647,19 @@ public class Dashboardusuariocontroller implements Initializable {
                     }
                 }
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
 
-        // ── Build the popup ──────────────────────────────────────────────────
-        Stage popup = new Stage();
-        popup.initModality(Modality.APPLICATION_MODAL);
-        popup.initStyle(StageStyle.DECORATED);
-        popup.setTitle("🏊  Mapa de Piscina Olímpica — Carriles");
-        popup.setResizable(false);
+        return ocupacion;
+    }
 
-        // Canvas dimensions
+    private void dibujarMapaPiscina(Piscina piscina, Canvas canvas) {
+        if (piscina == null || canvas == null) return;
+
+        int totalCarriles = piscina.getNumeroCarriles();
+        int maxPorCarril = servicioTurnos.getMaxPersonasPorCarril();
+        int[] ocupacion = calcularOcupacionPiscina(piscina);
+
         int laneW    = 80;
         int laneH    = 340;
         int padding  = 40;
@@ -566,14 +667,11 @@ public class Dashboardusuariocontroller implements Initializable {
         int canvasW  = padding * 2 + laneW * totalCarriles + (totalCarriles - 1) * 6;
         int canvasH  = padding * 2 + laneH + labelH;
 
-        Canvas canvas = new Canvas(canvasW, canvasH);
         GraphicsContext gc = canvas.getGraphicsContext2D();
 
-        // Background
         gc.setFill(Color.web("#FFF8F0"));
         gc.fillRect(0, 0, canvasW, canvasH);
 
-        // Title
         gc.setFill(Color.web("#E85D04"));
         gc.setFont(Font.font("Arial", FontWeight.BOLD, 15));
         gc.fillText("Piscina Olímpica — " + totalCarriles + " Carriles", padding, 22);
@@ -582,7 +680,6 @@ public class Dashboardusuariocontroller implements Initializable {
         gc.setFill(Color.web("#888"));
         gc.fillText("Turnos en el horario seleccionado · máx " + maxPorCarril + " personas/carril", padding, 37);
 
-        // Pool outline
         double poolX = padding - 4;
         double poolY = padding + 15;
         double poolW = laneW * totalCarriles + (totalCarriles - 1) * 6 + 8;
@@ -593,22 +690,20 @@ public class Dashboardusuariocontroller implements Initializable {
         gc.setLineWidth(2);
         gc.strokeRoundRect(poolX, poolY, poolW, poolH, 10, 10);
 
-        // Draw lanes
         for (int i = 0; i < totalCarriles; i++) {
             int laneNum = i + 1;
             double x = padding + i * (laneW + 6);
             double y = padding + 19;
 
-            // Determine fill color based on occupancy
             int occ = ocupacion[laneNum];
             double fillRatio = (maxPorCarril > 0) ? (double) occ / maxPorCarril : 0;
             Color laneFill;
             if (occ == 0) {
-                laneFill = Color.web("#48CAE4", 0.55);    // empty – light blue
+                laneFill = Color.web("#48CAE4", 0.55);
             } else if (fillRatio < 0.75) {
-                laneFill = Color.web("#F9A825", 0.65);    // partially occupied – amber
+                laneFill = Color.web("#F9A825", 0.65);
             } else {
-                laneFill = Color.web("#E85D04", 0.70);    // nearly full – orange/red
+                laneFill = Color.web("#E85D04", 0.70);
             }
 
             gc.setFill(laneFill);
@@ -617,26 +712,22 @@ public class Dashboardusuariocontroller implements Initializable {
             gc.setLineWidth(1);
             gc.strokeRoundRect(x, y, laneW, laneH, 6, 6);
 
-            // Lane number
             gc.setFill(Color.web("#004369"));
             gc.setFont(Font.font("Arial", FontWeight.BOLD, 13));
             String laneLabel = "C " + laneNum;
             gc.fillText(laneLabel, x + laneW / 2 - 14, y + 22);
 
-            // Divider dashes (swimming lane lines)
             gc.setStroke(Color.web("#FFFFFF", 0.7));
             gc.setLineWidth(2);
             gc.setLineDashes(8, 6);
             gc.strokeLine(x + laneW / 2.0, y + 32, x + laneW / 2.0, y + laneH - 10);
             gc.setLineDashes();
 
-            // Occupancy text at bottom of lane
             gc.setFill(Color.WHITE);
             gc.setFont(Font.font("Arial", FontWeight.BOLD, 12));
             String occText = occ + " / " + maxPorCarril;
             gc.fillText(occText, x + laneW / 2.0 - 16, y + laneH - 12);
 
-            // Label below pool
             gc.setFill(occ == 0 ? Color.web("#0077B6") : (fillRatio < 0.75 ? Color.web("#C44D03") : Color.web("#E85D04")));
             gc.setFont(Font.font("Arial", 11));
             String statusLabel = occ == 0 ? "Libre" : (occ >= maxPorCarril ? "Lleno" : "Parcial");
@@ -644,7 +735,6 @@ public class Dashboardusuariocontroller implements Initializable {
             gc.fillText(statusLabel, labelX, y + laneH + 20);
         }
 
-        // Legend
         double legX = padding;
         double legY = canvasH - 16.0;
         gc.setFont(Font.font("Arial", 10));
@@ -654,19 +744,13 @@ public class Dashboardusuariocontroller implements Initializable {
         gc.setFill(Color.web("#444")); gc.fillText(" Parcial", legX + 79, legY);
         gc.setFill(Color.web("#E85D04", 0.8)); gc.fillRect(legX + 148, legY - 10, 12, 10);
         gc.setFill(Color.web("#444")); gc.fillText(" Lleno", legX + 162, legY);
+    }
 
-        // Close button
-        Button btnClose = new Button("Cerrar");
-        btnClose.setStyle("-fx-background-color: #E85D04; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 8 20; -fx-background-radius: 6; -fx-cursor: hand;");
-        btnClose.setOnAction(e -> popup.close());
-
-        VBox root = new VBox(8, canvas, btnClose);
-        root.setAlignment(Pos.CENTER);
-        root.setPadding(new Insets(10));
-        root.setStyle("-fx-background-color: #FFF8F0;");
-
-        popup.setScene(new Scene(root));
-        popup.showAndWait();
+    private void refrescarMapaPiscinaAbierto() {
+        if (mapaPiscinaStage == null || mapaPiscinaCanvas == null || mapaPiscinaActual == null) {
+            return;
+        }
+        dibujarMapaPiscina(mapaPiscinaActual, mapaPiscinaCanvas);
     }
 
     /** Updates lane occupancy label when a lane is selected in the combo. */
@@ -688,6 +772,7 @@ public class Dashboardusuariocontroller implements Initializable {
                     .count();
             String estado = (occ >= maxPorCarril) ? " 🔴 LLENO" : (occ > 0 ? " 🟡 Parcial" : " 🟢 Libre");
             lblOcupacionCarril.setText(occ + " / " + maxPorCarril + " personas" + estado);
+            refrescarMapaPiscinaAbierto();
         } catch (Exception e) {
             lblOcupacionCarril.setText("");
         }
@@ -763,14 +848,12 @@ public class Dashboardusuariocontroller implements Initializable {
             // Assign trainer if selected
             if (quiereEntrenador && entrenadorAsignado != null) {
                 try {
-                    nuevo.setEntrenador(entrenadorAsignado);
-                    // Persist if DAO supports it (best-effort)
-                    turnoDAO.actualizarEntrenador(nuevo.getIdTurno(), entrenadorAsignado.getId());
+                    servicioAsignarEntrenador.asignarEntrenadorATurno(nuevo, entrenadorAsignado, usuario);
                 } catch (Exception ignored) {
                     // Non-critical: turno created, trainer assignment logged
                 }
             }
-
+           
             lblErrorAgendar.setStyle("-fx-text-fill: #27ae60; -fx-font-size: 12;");
             String msgEntrenador = (quiereEntrenador && entrenadorAsignado != null)
                     ? " con entrenador " + entrenadorAsignado.getNombre() : "";
@@ -778,17 +861,21 @@ public class Dashboardusuariocontroller implements Initializable {
                     + fechaHora.format(FMT_DISPLAY) + msgEntrenador + ".");
 
             instalacionSeleccionada = instActualizada;
+                actualizarResumen();
+                actualizarOcupacionCarril();
+                cargarInicio();
+            refrescarMapaPiscinaAbierto();
 
-            javafx.animation.PauseTransition pausa = new javafx.animation.PauseTransition(Duration.seconds(1.5));
-            pausa.setOnFinished(e -> onMisTurnos());
-            pausa.play();
+             abrirPasarelaPago(nuevo);
 
         } catch (IllegalArgumentException | IllegalStateException | IllegalAccessError ex) {
             lblErrorAgendar.setStyle("-fx-text-fill: #C44D03; -fx-font-size: 12;");
             lblErrorAgendar.setText("✗ " + ex.getMessage());
         } catch (Exception ex) {
+            ex.printStackTrace();
             lblErrorAgendar.setStyle("-fx-text-fill: #C44D03; -fx-font-size: 12;");
-            lblErrorAgendar.setText("Error inesperado: " + ex.getMessage());
+            String causa = ex.getCause() != null ? " (" + ex.getCause().getMessage() + ")" : "";
+            lblErrorAgendar.setText("Error inesperado: " + ex.getMessage() + causa);
         }
     }
 
@@ -811,6 +898,8 @@ public class Dashboardusuariocontroller implements Initializable {
             lblMsgTurnos.setText("Turno #" + sel.getIdTurno() + " cancelado correctamente.");
             cargarMisTurnos();
             cargarInicio();
+            actualizarOcupacionCarril();
+            refrescarMapaPiscinaAbierto();
         } catch (IllegalStateException ex) {
             lblMsgTurnos.setText("No se puede cancelar: " + ex.getMessage());
         } catch (Exception ex) {

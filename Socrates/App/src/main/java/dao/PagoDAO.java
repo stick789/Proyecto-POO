@@ -31,6 +31,10 @@ public class PagoDAO implements IPagoDAO {
 
     private final Conexion conexion = Conexion.getInstancia();
 
+    // Constructor vacío: NO ejecutar auto-migraciones en tiempo de ejecución.
+    public PagoDAO() {
+    }
+
     // ── SQL (columnas en camelCase tal como define el SQL) ────────────────────
 
     private static final String SQL_INSERT =
@@ -52,6 +56,14 @@ public class PagoDAO implements IPagoDAO {
 
     private static final String SQL_UPDATE_ESTADO =
             "UPDATE pagos SET estadoPago = ? WHERE idPago = ?";
+
+    // =================================================================== ESQUEMA
+
+    /**
+     * Asegura que la tabla pagos tenga las columnas usadas por el DAO.
+     * Permite trabajar con bases antiguas donde solo existían idPago/monto/metodoPago/estadoPago.
+     */
+    // No hay utilidades de migración en tiempo de ejecución; usar el script SQL
 
     // =================================================================== CRUD
 
@@ -182,12 +194,13 @@ public class PagoDAO implements IPagoDAO {
 public int registrarPago(Pago pago) throws SQLException {
     Connection con = conexion.conectar();
     if (con == null) throw new SQLException("No se pudo conectar a la base de datos");
-    String sql = "INSERT INTO pagos (id_turno, monto, metodoPago, estadoPago) VALUES (?, ?, ?, ?)";
+    String sql = "INSERT INTO pagos (id_turno, id_usuario, monto, metodoPago, estadoPago) VALUES (?, ?, ?, ?, ?)";
     try (PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
         ps.setInt(1, pago.getIdTurno());
-        ps.setBigDecimal(2, pago.getMonto());
-        ps.setString(3, pago.getMetodoPago());
-        ps.setString(4, pago.getEstadoPago());
+        ps.setInt(2, pago.getIdUsuario());
+        ps.setBigDecimal(3, pago.getMonto());
+        ps.setString(4, pago.getMetodoPago());
+        ps.setString(5, pago.getEstadoPago());
         ps.executeUpdate();
         try (ResultSet rs = ps.getGeneratedKeys()) {
             if (rs.next()) {
