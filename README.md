@@ -32,9 +32,28 @@
 > Para probar la pasarela puse  un id predeterminado de forma temporal para que sea el  1, pronto habra que cambiar eso, por lo que todavia no tenemos el metodo de agendar turnos, el archivo que use para iniciar la pasarla de pagos por si sola, no la commitee para evitar confuciones.
 > Abajo dejo el codigo para el main a utilizar por si quieren probar la pasarela de pagos
 
-## Pasarela de Pagos Launcher
+## Pasarela de Pagos 
 
-Clase temporal para lanzar la vista de la pasarela de pagos.
+Clase temporal para lanzar la vista de la pasarela de pagos. Nunca se va a poder completar un pego porque la cuenta no esta habilitada para recibirlos.
+### 🧪 Datos de Prueba
+
+**Importante**: Estas credenciales son solo para entornos de **pruebas** (sandbox). No utilizar en producción.
+
+#### Tarjetas de Crédito de Prueba
+
+| Estado                    | Franquicia         | Número                  | Expiración | CVV | Respuesta                              |
+|---------------------------|--------------------|-------------------------|------------|-----|----------------------------------------|
+| **Aceptada**              | Visa               | 4575 6231 8229 0326     | 12/2027    | 123 | Aceptada                               |
+| **Fondos insuficientes**  | Visa               | 4151 6115 2758 3283     | 12/2027    | 123 | Fondos insuficientes                   |
+| **Fallida**               | Mastercard         | 5170 3944 9037 9427     | 12/2027    | 123 | Error de comunicación con el centro    |
+| **Pendiente**             | American Express   | 3731 1885 6457 642      | 12/2027    | 123 | Transacción pendiente por validación   |
+
+#### Cuentas Daviplata de Prueba
+
+| Tipo de Documento         | Número              |
+|---------------------------|---------------------|
+| **Cédula de Ciudadanía**  | 1134568019          |
+| **Cédula de Extranjería** | 786630              |
 
 <details>
 <summary>📄 Ver código completo (PasarelaPagosLauncher.java)</summary>
@@ -123,3 +142,9 @@ public class PasarelaPagosLauncher extends Application {
 >Designar rol al usuario recién registrado para evitar errores.
 >
 >Añadir finalmente pasarela de pagos y JasperReports y conectarlos al programa/base de datos para así tener el sistema completo.
+>
+
+# Ultimos pendientes
+
+> [!NOTE]
+>Mejorar interface, Añadir Jasper, y organizar presios dependiendo de categoria. Ademas de preparar presentación final.
