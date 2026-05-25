@@ -19,6 +19,7 @@ import dao.HistorialCitasDAO;
 import dao.InstalacionDAO;
 import dao.PagoDAO;
 import dao.PersonaDAO;
+import dao.SedeDAO;
 import dao.TurnoDAO;
 import entidades.Entrenador;
 import entidades.Gimnasio;
@@ -26,6 +27,7 @@ import entidades.Instalacion;
 import entidades.Pago;
 import entidades.Persona;
 import entidades.Piscina;
+import entidades.Sede;
 import entidades.Turno;
 import entidades.Usuario;
 import javafx.animation.FadeTransition;
@@ -344,17 +346,12 @@ public class Dashboardusuariocontroller implements Initializable {
      * Carga las instalaciones del tipo dado que pertenecen a la sede del usuario.
      * Si hay más de una, abre un ChoiceDialog para que el usuario elija.
      * Si solo hay una, la selecciona directamente.
+     *
+     * Como la sesión todavía no almacena una sede propia, se agregan las
+     * instalaciones de todas las sedes registradas para no ocultar sedes nuevas.
      */
     private void mostrarSelectorInstalacion(String tipo) {
-        int idSede = obtenerIdSedeUsuario();
-        List<Instalacion> opciones;
-        try {
-            opciones = "GIMNASIO".equals(tipo)
-                    ? instalacionDAO.listarGimnasiosPorSede(idSede)
-                    : instalacionDAO.listarPiscinasPorSede(idSede);
-        } catch (Exception e) {
-            opciones = new ArrayList<>();
-        }
+        List<Instalacion> opciones = listarInstalacionesPorTipo(tipo);
 
         if (opciones.isEmpty()) {
             lblCapacidadInstalacion.setText(
@@ -375,6 +372,32 @@ public class Dashboardusuariocontroller implements Initializable {
             dialog.setContentText("Instalación:");
             dialog.showAndWait().ifPresent(inst -> aplicarSeleccionInstalacion(inst, tipo));
         }
+    }
+
+    /**
+     * Reúne instalaciones del tipo solicitado en todas las sedes registradas.
+     * Esto evita que una sede nueva quede fuera si la sesión aún no conoce su id.
+     */
+    private List<Instalacion> listarInstalacionesPorTipo(String tipo) {
+        List<Instalacion> opciones = new ArrayList<>();
+        try {
+            List<Integer> sedes = new SedeDAO().listarTodos()
+                    .stream()
+                    .map(Sede::getIdSede)
+                    .collect(Collectors.toList());
+
+            for (Integer idSede : sedes) {
+                List<Instalacion> parciales = "GIMNASIO".equals(tipo)
+                        ? instalacionDAO.listarGimnasiosPorSede(idSede)
+                        : instalacionDAO.listarPiscinasPorSede(idSede);
+                if (parciales != null && !parciales.isEmpty()) {
+                    opciones.addAll(parciales);
+                }
+            }
+        } catch (Exception e) {
+            return new ArrayList<>();
+        }
+        return opciones;
     }
 
     /** Aplica la instalación elegida: actualiza estilos, labels y paneles derivados. */
@@ -768,6 +791,7 @@ public class Dashboardusuariocontroller implements Initializable {
             lblErrorAgendar.setText("Error inesperado: " + ex.getMessage());
         }
     }
+
 
     @FXML
     private void onCancelarTurno() {
