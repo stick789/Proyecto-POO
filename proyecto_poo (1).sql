@@ -218,7 +218,7 @@ CREATE TABLE `turno` (
   `id_usuario` int(11) NOT NULL,
   `id_instalacion` int(11) NOT NULL,
   `id_entrenador` int(11) DEFAULT NULL,
-  `numero_carril_assigned` int(11) DEFAULT NULL,
+  `numero_carril_asignado` int(11) DEFAULT NULL,
   `estado` varchar(20) DEFAULT 'RESERVADO',
   `idSede` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
