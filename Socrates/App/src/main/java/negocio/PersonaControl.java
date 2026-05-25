@@ -165,8 +165,9 @@ public class PersonaControl {
      * <p>Matriz de permisos:</p>
      * <ul>
      *   <li>AGENDAR / CANCELAR / REAGENDAR → Usuario, Administrador.</li>
-     *   <li>ADMINISTRAR_HISTORIAL / MODIFICAR / ELIMINAR / LISTAR /
-     *       ASIGNAR_ENTRENADOR / GESTIONAR_PAGOS → solo Administrador.</li>
+    *   <li>ADMINISTRAR_HISTORIAL / MODIFICAR / ELIMINAR / LISTAR /
+    *       GESTIONAR_PAGOS → solo Administrador.</li>
+    *   <li>ASIGNAR_TURNO_ENTRENADOR → Usuario o Administrador.</li>
      * </ul>
      */
     public boolean puedeRealizar(Persona persona, OperacionPersona operacion) {
@@ -177,15 +178,16 @@ public class PersonaControl {
             case AGENDAR_CITA:
             case CANCELAR_CITA:
             case REAGENDAR_CITA:
+            case ASIGNAR_TURNO_ENTRENADOR:
                 return esUsuario(persona) || esAdministrador(persona);
 
             case ADMINISTRAR_HISTORIAL:
             case MODIFICAR_USUARIO:
             case ELIMINAR_USUARIO:
             case LISTAR_USUARIOS:
-            case ASIGNAR_TURNO_ENTRENADOR:
             case GESTIONAR_PAGOS:
                 return esAdministrador(persona);
+
 
             default:
                 return false;

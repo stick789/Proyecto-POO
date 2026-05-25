@@ -49,11 +49,11 @@ public class ServicioAsignarEntrenador {
 
     /**
      * Asigna un entrenador a un turno de piscina o gimnasio.
-     * Solo puede ser invocado por un administrador.
+    * Puede ser invocado por un usuario o un administrador dentro del flujo de agendamiento.
      *
      * @param turno      turno al que se asigna el entrenador.
      * @param entrenador entrenador con la especialidad compatible.
-     * @param actor      administrador que realiza la operación.
+    * @param actor      persona que realiza la operación.
      */
     public void asignarEntrenadorATurno(Turno turno, Entrenador entrenador, Persona actor) {
         if (actor      == null) throw new IllegalArgumentException("El actor no puede ser null.");
