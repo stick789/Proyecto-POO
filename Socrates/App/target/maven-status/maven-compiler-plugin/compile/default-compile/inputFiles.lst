@@ -33,6 +33,7 @@ c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\socratesGui\Sec
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\socratesGui\SesionActual.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\socratesGui\Dashboardadmincontroller.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\socratesGui\RegistroExitosoController.java
+c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\dao\EpaycoEstadoParser.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\entidades\Piscina.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\entidades\Sede.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\util\ConfigLoader.java
@@ -43,6 +44,7 @@ c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\LogicaCita\Vali
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\entidades\Historial_citas.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\socratesGui\App.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\entidades\Pago.java
+c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\service\EpaycoStatusResult.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\dao\ITurnoDAO.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\negocio\EntrenadorControl.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\dao\IPagoDAO.java

@@ -23,7 +23,6 @@ entidades\Persona.class
 negocio\EntrenadorControl.class
 LogicaCita\ServicioTurnos.class
 socratesGui\App.class
-service\EpaycoService.class
 LogicaCita\PoliticaCancelacion.class
 LogicaCita\HistorialCitasServicio.class
 entidades\Piscina.class

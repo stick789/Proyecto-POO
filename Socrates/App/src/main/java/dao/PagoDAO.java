@@ -5,6 +5,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -42,7 +44,7 @@ public class PagoDAO implements IPagoDAO {
             "VALUES (?, ?, ?, ?, ?)";
 
     private static final String SQL_SELECT_BASE =
-            "SELECT idPago, id_turno, id_usuario, monto, metodoPago, estadoPago, fechaPago " +
+            "SELECT idPago, id_turno, id_usuario, monto, metodoPago, estadoPago, fechaPago, epayco_session_id, epayco_ref_payco " +
             "FROM pagos ";
 
     private static final String SQL_SELECT_POR_ID    = SQL_SELECT_BASE + "WHERE idPago = ?";
@@ -68,30 +70,26 @@ public class PagoDAO implements IPagoDAO {
     // =================================================================== CRUD
 
     @Override
-    public void insertar(Pago pago) {
-        Connection con = conexion.conectar();
-        if (con == null) return;
-
-        try (PreparedStatement ps = con.prepareStatement(
-                SQL_INSERT, Statement.RETURN_GENERATED_KEYS)) {
-
-            ps.setInt(1, pago.getIdTurno());
-            ps.setInt(2, pago.getIdUsuario());
-            ps.setBigDecimal(3, pago.getMonto());
-            ps.setString(4, pago.getMetodoPago());     // columna: metodoPago
-            ps.setString(5, pago.getEstadoPago());     // columna: estadoPago
-            ps.executeUpdate();
-
-            try (ResultSet keys = ps.getGeneratedKeys()) {
-                if (keys.next()) pago.setIdPago(keys.getLong(1));
-            }
-
-        } catch (SQLException e) {
-            throw new RuntimeException("Error al insertar pago", e);
-        } finally {
-            conexion.desconectar();
+    public void insertar(Pago pago)  {
+    String sql = "INSERT INTO pagos (monto, metodoPago, estadoPago, id_turno, id_usuario, fechaPago) VALUES (?, ?, ?, ?, ?, ?)";
+    try (Connection con = conexion.conectar();
+         PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        ps.setBigDecimal(1, pago.getMonto());
+        ps.setString(2, pago.getMetodoPago());
+        ps.setString(3, pago.getEstadoPago());
+        ps.setInt(4, pago.getIdTurno());
+        ps.setInt(5, pago.getIdUsuario());
+        // Si no se proporcionó fecha en el objeto, usar la fecha/hora actual
+        LocalDateTime fecha = pago.getFechaPago() != null ? pago.getFechaPago() : LocalDateTime.now();
+        ps.setTimestamp(6, Timestamp.valueOf(fecha));
+        ps.executeUpdate();
+        try (ResultSet rs = ps.getGeneratedKeys()) {
+            if (rs.next()) pago.setIdPago(rs.getInt(1));
         }
-    }
+    }   catch (SQLException ex) {
+            System.getLogger(PagoDAO.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+        }
+}
 
     @Override
     public boolean actualizarEstado(long idPago, String nuevoEstado) {
@@ -159,7 +157,7 @@ public class PagoDAO implements IPagoDAO {
      * Usa los nombres de columna exactos del SQL (camelCase).
      */
     private Pago mapear(ResultSet rs) throws SQLException {
-        return new Pago(
+        Pago pago = new Pago(
                 rs.getLong("idPago"),                              // PK: idPago
                 rs.getInt("id_turno"),                            // FK turno
                 rs.getInt("id_usuario"),                          // FK usuario
@@ -170,6 +168,9 @@ public class PagoDAO implements IPagoDAO {
                         ? rs.getTimestamp("fechaPago").toLocalDateTime()
                         : null
         );
+        pago.setEpaycoSessionId(rs.getString("epayco_session_id"));
+        pago.setEpaycoRefPayco(rs.getString("epayco_ref_payco"));
+        return pago;
     }
 
     private List<Pago> ejecutarConsultaConParam(String sql, int param) {
@@ -216,33 +217,30 @@ public int registrarPago(Pago pago) throws SQLException {
 }
 
 // Método para actualizar el session_id de ePayco
+
+
+// Método para actualizar el ref_payco y el estado (cuando llegue la confirmación)
 public void actualizarSessionId(int idPago, String sessionId) throws SQLException {
-    Connection con = conexion.conectar();
-    if (con == null) throw new SQLException("No se pudo conectar a la base de datos");
     String sql = "UPDATE pagos SET epayco_session_id = ? WHERE idPago = ?";
-    try (PreparedStatement ps = con.prepareStatement(sql)) {
+    try (Connection con = conexion.conectar();
+         PreparedStatement ps = con.prepareStatement(sql)) {
         ps.setString(1, sessionId);
         ps.setInt(2, idPago);
-        ps.executeUpdate();
-    } finally {
-        conexion.desconectar();
+        int filas = ps.executeUpdate();
+        System.out.println("actualizarSessionId: idPago=" + idPago + ", sessionId=" + sessionId + ", filas=" + filas);
     }
 }
 
-// Método para actualizar el ref_payco y el estado (cuando llegue la confirmación)
-public void actualizarRefPaycoYEstado(int idPago, String refPayco, String nuevoEstado) throws SQLException {
-    Connection con = conexion.conectar();
-    if (con == null) throw new SQLException("No se pudo conectar a la base de datos");
-    String sql = "UPDATE pagos SET epayco_ref_payco = ?, estadoPago = ? WHERE idPago = ?";
-    try (PreparedStatement ps = con.prepareStatement(sql)) {
-        ps.setString(1, refPayco);
-        ps.setString(2, nuevoEstado);
-        ps.setInt(3, idPago);
-        ps.executeUpdate();
-    } finally {
-        conexion.desconectar();
+    public void actualizarRefPayco(int idPago, String refPayco) throws SQLException {
+        String sql = "UPDATE pagos SET epayco_ref_payco = ? WHERE idPago = ?";
+        try (Connection con = conexion.conectar();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, refPayco);
+            ps.setInt(2, idPago);
+            int filas = ps.executeUpdate();
+            System.out.println("actualizarRefPayco: idPago=" + idPago + ", refPayco=" + refPayco + ", filas=" + filas);
+        }
     }
-}
 
 // ─── ADMIN: listar todos los pagos ────────────────────────────────────────────
 

@@ -41,6 +41,8 @@ public class PasarelaPagosController {
     private PagoDAO pagoDAO;
     private PagosOnlineDAO pagosOnlineDAO;
     private HostServices hostServices;
+    private String publicKey;
+    private String privateKey;
     private Turno turnoActual;
     private Integer idPagoGenerado = null;
     private double totalTurno = 0.0;
@@ -61,7 +63,7 @@ public class PasarelaPagosController {
         this.turnoActual = turno;
         if (turno != null) {
             lblIdTurno.setText(String.valueOf(turno.getIdTurno()));
-            double total = calcularTotalTurno(turno.getIdTurno());
+            double total = calcularTotalTurno();
             this.totalTurno = total;
             lblTotal.setText("$ " + String.format("%,.2f", total));
             lblDescripcion.setText("Pago turno #" + turno.getIdTurno());
@@ -89,14 +91,14 @@ public class PasarelaPagosController {
                         String estado = pagosOnlineDAO.verificarEstado(idPagoGenerado);
                         Platform.runLater(() -> {
                             txtLog.appendText("🔄 Verificación automática: " + estado + "\n");
-                            if ("Aprobado".equals(estado)) {
-                                pagoFinalizado = true;
-                                txtLog.appendText("✅ Pago confirmado por verificación automática.\n");
-                                mostrarAlerta("Éxito", "El pago ha sido APROBADO.");
-                                cerrarVentana();
-                            } else if ("Rechazado".equals(estado) || "FALLIDO".equalsIgnoreCase(estado)) {
-                                cerrarPorFallo("El pago fue rechazado por verificación automática.");
-                            }
+                                if (Pago.ESTADO_COMPLETADO.equalsIgnoreCase(estado)) {
+                                    pagoFinalizado = true;
+                                    txtLog.appendText("✅ Pago confirmado por verificación automática.\n");
+                                    mostrarAlerta("Éxito", "El pago ha sido APROBADO.");
+                                    cerrarVentana();
+                                } else if (Pago.ESTADO_FALLIDO.equalsIgnoreCase(estado)) {
+                                    cerrarPorFallo("El pago fue rechazado por verificación automática.");
+                                }
                         });
                     }
                     // Si no hay pago generado aún, o si el estado es pendiente, seguimos esperando.
@@ -111,8 +113,11 @@ public class PasarelaPagosController {
 
     @FXML
     public void initialize() {
-        String publicKey = ConfigLoader.get("epayco.publicKey");
-        String privateKey = ConfigLoader.get("epayco.privateKey");
+        publicKey = ConfigLoader.get("epayco.publicKey");
+        privateKey = ConfigLoader.get("epayco.privateKey");
+        if (publicKey == null || publicKey.isBlank() || privateKey == null || privateKey.isBlank()) {
+            throw new IllegalStateException("Faltan las llaves de ePayco en config.properties (epayco.publicKey / epayco.privateKey)");
+        }
         pagoDAO = new PagoDAO();
         pagosOnlineDAO = new PagosOnlineDAO(publicKey, privateKey, pagoDAO);
         btnPagar.setOnAction(event -> iniciarPago());
@@ -154,31 +159,38 @@ public class PasarelaPagosController {
             }
 
             String descripcion = lblDescripcion.getText();
-            String sessionId = pagosOnlineDAO.iniciarPagoConTarjeta(turnoActual.getIdTurno(), total, descripcion);
+            String sessionOrUrl = pagosOnlineDAO.iniciarPagoConTarjeta(turnoActual.getIdTurno(), total, descripcion);
             pagoIniciado = true;
-            String miepaycoUrl = ConfigLoader.get("epayco.miepaycoUrl");
-            if (miepaycoUrl == null || miepaycoUrl.isBlank()) {
-                miepaycoUrl = "https://dquintero1582228.epayco.me";
-            }
-
             idPagoGenerado = obtenerIdPagoPorTurno(turnoActual.getIdTurno());
-            String html = construirHtmlCheckout(total, miepaycoUrl);
 
-            try {
-                abrirCheckoutLocal(html);
-                String uri = "http://127.0.0.1:" + checkoutServer.getAddress().getPort() + "/checkout";
+            // Si el backend devolvió una URL de pago, abrirla directamente (evita que JS cree otra sesión distinta)
+            if (sessionOrUrl != null && sessionOrUrl.toLowerCase().startsWith("http")) {
+                txtLog.appendText("🟢 Abriendo URL de pago provista por backend: " + sessionOrUrl + "\n");
                 if (hostServices != null) {
-                    hostServices.showDocument(uri);
+                    hostServices.showDocument(sessionOrUrl);
                 } else {
-                    txtLog.appendText("🔗 Abra manualmente: " + uri + "\n");
-                    mostrarAlerta("Información", "No pude abrir el navegador automáticamente. Copia y pega la URL:\n" + uri);
+                    txtLog.appendText("🔗 Abra manualmente: " + sessionOrUrl + "\n");
+                    mostrarAlerta("Información", "No pude abrir el navegador automáticamente. Copia y pega la URL:\n" + sessionOrUrl);
                 }
-            } catch (Exception e) {
-                txtLog.appendText("🔴 Error preparando checkout local: " + e.getMessage() + "\n");
-                mostrarAlerta("Error", "No pude preparar la pasarela local: " + e.getMessage());
+            } else {
+                // fallback: servir página local que usaba JS para crear la sesión (mantener compatibilidad)
+                String html = construirHtmlCheckout(total, publicKey, idPagoGenerado);
+                try {
+                    abrirCheckoutLocal(html);
+                    String uri = "http://127.0.0.1:" + checkoutServer.getAddress().getPort() + "/checkout";
+                    if (hostServices != null) {
+                        hostServices.showDocument(uri);
+                    } else {
+                        txtLog.appendText("🔗 Abra manualmente: " + uri + "\n");
+                        mostrarAlerta("Información", "No pude abrir el navegador automáticamente. Copia y pega la URL:\n" + uri);
+                    }
+                } catch (IOException e) {
+                    txtLog.appendText("🔴 Error preparando checkout local: " + e.getMessage() + "\n");
+                    mostrarAlerta("Error", "No pude preparar la pasarela local: " + e.getMessage());
+                }
             }
 
-            txtLog.appendText("🟢 Pasarela abierta en navegador. Session ID: " + sessionId + "\n");
+            txtLog.appendText("🟢 Pasarela abierta en navegador. Session/URL: " + sessionOrUrl + "\n");
             mostrarAlerta("Información", "La pasarela se abrió en tu navegador.\nCompleta el pago y luego presiona 'VERIFICAR PAGO'.");
             iniciarVerificacionAutomatica();
         } catch (Exception e) {
@@ -209,10 +221,10 @@ public class PasarelaPagosController {
 
             String estado = pagosOnlineDAO.verificarEstado(idPagoGenerado);
             txtLog.appendText("🔄 Estado consultado: " + estado + "\n");
-            if ("Aprobado".equals(estado)) {
+            if (Pago.ESTADO_COMPLETADO.equalsIgnoreCase(estado)) {
                 txtLog.appendText("✅ ¡Pago confirmado! Estado actualizado en BD.\n");
                 mostrarAlerta("Éxito", "El pago ha sido APROBADO.");
-            } else if ("Rechazado".equals(estado) || "FALLIDO".equalsIgnoreCase(estado)) {
+            } else if (Pago.ESTADO_FALLIDO.equalsIgnoreCase(estado)) {
                 cerrarPorFallo("El pago fue rechazado.");
             } else {
                 txtLog.appendText("⏳ Pago pendiente. Intente más tarde.\n");
@@ -243,6 +255,7 @@ public class PasarelaPagosController {
         }
 
         checkoutServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        // Contexto principal que sirve la página de checkout
         checkoutServer.createContext("/checkout", (HttpExchange exchange) -> {
             byte[] response = html.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().add("Content-Type", "text/html; charset=UTF-8");
@@ -251,6 +264,8 @@ public class PasarelaPagosController {
                 outputStream.write(response);
             }
         });
+
+       
         checkoutServer.setExecutor(null);
         checkoutServer.start();
     }
@@ -265,79 +280,163 @@ public class PasarelaPagosController {
                 .replace(">", "&gt;");
     }
 
- private String formatAmountForEpaycoInput(double amount) {
-    // Redondear a entero
-    long rounded = Math.round(amount);
-    // Formatear con separador de miles = coma
-    java.text.DecimalFormatSymbols symbols = new java.text.DecimalFormatSymbols();
-    symbols.setGroupingSeparator(',');
-    java.text.DecimalFormat formatter = new java.text.DecimalFormat("$#,##0", symbols);
-    return formatter.format(rounded);
-}
+private String construirHtmlCheckout(double total, String publicKey, Integer backendPagoId) {
+    String amount = String.valueOf(Math.round(total));
+    String clientKey = escapeHtml(publicKey);
 
-private String construirHtmlCheckout(double total, String miepaycoUrl) {
-    String amount = formatAmountForEpaycoInput(total);
-    String url = escapeHtml(miepaycoUrl);
-
-    return "<!doctype html>\n" +
+    return "<!DOCTYPE html>\n" +
             "<html lang=\"es\">\n" +
             "<head>\n" +
-            "  <meta charset=\"utf-8\">\n" +
-            "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n" +
-            "  <title>Pago ePayco.me</title>\n" +
+            "    <meta charset=\"UTF-8\">\n" +
+            "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
+            "    <title>Prueba de Pago ePayco Sandbox</title>\n" +
+            "    <script src=\"https://checkout.epayco.co/checkout-v2.js\"></script>\n" +
+            "    <style>\n" +
+            "        body { font-family: Arial, sans-serif; padding: 20px; max-width: 760px; margin: 0 auto; background: #121212; color: #f5f5f5; }\n" +
+            "        .card { background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 16px; }\n" +
+            "        .form-group { margin-bottom: 15px; }\n" +
+            "        label { display: block; margin-bottom: 5px; font-weight: bold; }\n" +
+            "        input { width: 100%; padding: 10px; box-sizing: border-box; border-radius: 8px; border: 1px solid #444; background: #111; color: #fff; }\n" +
+            "        button { background-color: #ff7a00; color: white; padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }\n" +
+            "        button:hover { background-color: #e56f00; }\n" +
+            "        #resultado { margin-top: 20px; padding: 10px; border: 1px solid #333; background: #111; border-radius: 8px; display: none; }\n" +
+            "        .hint { color: #cfcfcf; font-size: 0.95rem; line-height: 1.4; }\n" +
+            "        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }\n" +
+            "    </style>\n" +
             "</head>\n" +
             "<body>\n" +
-            "  <div id=\"miepayco\">\n" +
-            "    <script defer type=\"text/javascript\"\n" +
-            "      src=\"https://mi-epayco.s3.amazonaws.com/embed.js\"\n" +
-            "      miepaycoUrl=\"" + url + "\">\n" +
+            "\n" +
+            "    <h2>Formulario de Prueba ePayco Sandbox</h2>\n" +
+            "    <div class=\"card\">\n" +
+            "        <div class=\"hint\">\n" +
+            "            Este flujo usa <strong>checkout.epayco.co</strong> con <strong>test: true</strong>, que es el modo de pruebas real del checkout v2.\n" +
+            "        </div>\n" +
+            "    </div>\n" +
+            "\n" +
+            "    <script>\n" +
+            "        var client_key = \"" + clientKey + "\";\n" +
+            "        window.ePayco.checkout.configure({ key: client_key, test: true });\n" +
             "    </script>\n" +
-            "  </div>\n" +
-            "  <script>\n" +
-            "    (function() {\n" +
-            "      const targetAmount = '" + amount + "';\n" +
-            "      console.log('Insertando monto:', targetAmount);\n" +
-            "      function simulateTyping(el, text) {\n" +
-            "        el.focus();\n" +
-            "        el.value = '';\n" +
-            "        for (let ch of text) {\n" +
-            "          el.dispatchEvent(new KeyboardEvent('keydown', { key: ch, bubbles: true }));\n" +
-            "          el.dispatchEvent(new KeyboardEvent('keypress', { key: ch, bubbles: true }));\n" +
-            "          el.value += ch;\n" +
-            "          el.dispatchEvent(new Event('input', { bubbles: true }));\n" +
-            "          el.dispatchEvent(new KeyboardEvent('keyup', { key: ch, bubbles: true }));\n" +
+            "\n" +
+            "    <div class=\"card\">\n" +
+            "    <div class=\"grid\">\n" +
+            "        <div class=\"form-group\">\n" +
+            "            <label>Nombre del Titular:</label>\n" +
+            "            <input type=\"text\" id=\"nombre\" value=\"PRUEBA USUARIO\">\n" +
+            "        </div>\n" +
+            "        <div class=\"form-group\">\n" +
+            "            <label>Correo:</label>\n" +
+            "            <input type=\"text\" id=\"email\" value=\"test@prueba.com\">\n" +
+            "        </div>\n" +
+            "    </div>\n" +
+            "\n" +
+            "    <div class=\"form-group\">\n" +
+            "        <label>Descripción:</label>\n" +
+            "        <input type=\"text\" id=\"descripcion\" value=\"Prueba de tarjeta en sandbox\">\n" +
+            "    </div>\n" +
+            "\n" +
+            "    <div class=\"grid\">\n" +
+            "        <div class=\"form-group\">\n" +
+            "            <label>Documento:</label>\n" +
+            "            <input type=\"text\" id=\"documento\" value=\"123456789\">\n" +
+            "        </div>\n" +
+            "        <div class=\"form-group\">\n" +
+            "            <label>Moneda:</label>\n" +
+            "            <input type=\"text\" id=\"moneda\" value=\"COP\">\n" +
+            "        </div>\n" +
+            "    </div>\n" +
+            "\n" +
+            "    <button onclick=\"realizarPago()\">Abrir checkout sandbox por $" + amount + " COP</button>\n" +
+            "\n" +
+            "    <div id=\"resultado\"></div>\n" +
+            "\n" +
+            "    <script>\n" +
+            "        function realizarPago() {\n" +
+            "            var nombre = document.getElementById(\"nombre\").value.trim();\n" +
+            "            var email = document.getElementById(\"email\").value.trim();\n" +
+            "            var descripcion = document.getElementById(\"descripcion\").value.trim();\n" +
+            "            var documento = document.getElementById(\"documento\").value.trim();\n" +
+            "            var moneda = document.getElementById(\"moneda\").value.trim() || 'COP';\n" +
+            "            if (!nombre || !email || !descripcion || !documento) {\n" +
+            "                alert(\"Completa los datos básicos para abrir el checkout sandbox.\");\n" +
+            "                return;\n" +
+            "            }\n" +
+            "\n" +
+            "            var transaction = {\n" +
+            "                type: 'checkout',\n" +
+            "                key: client_key,\n" +
+            "                test: true,\n" +
+             "                ip: '0.0.0.0',\n" +
+            "                name: nombre,\n" +
+            "                description: descripcion,\n" +
+            "                currency: moneda,\n" +
+            "                amount: '" + amount + "',\n" +
+            "                lang: 'es',\n" +
+            "                checkoutType: 'standard',\n" +
+            "                emailBilling: email,\n" +
+            "                nameBilling: nombre,\n" +
+            "                typeDocBilling: 'CC',\n" +
+            "                numberDocBilling: documento,\n" +
+            "                toApiPayload: function() {\n" +
+            "                    return {\n" +
+            "                        transaction: {\n" +
+            "                            epaycoKey: this.key,\n" +
+            "                            epaycoTest: true,\n" +
+            "                            epaycoIp: this.ip,\n" +
+            "                            epaycoName: this.name,\n" +
+            "                            epaycoDescription: this.description,\n" +
+            "                            epaycoCurrency: this.currency,\n" +
+            "                            epaycoAmount: Number(this.amount),\n" +
+            "                            epaycoLang: this.lang,\n" +
+            "                            epaycoMethod: 'POST',\n" +
+            "                            epaycoCheckoutType: this.checkoutType,\n" +
+            "                            epaycoBilling: {\n" +
+            "                                email: this.emailBilling,\n" +
+            "                                name: this.nameBilling,\n" +
+            "                                typeDoc: this.typeDocBilling,\n" +
+            "                                numberDoc: this.numberDocBilling\n" +
+            "                            }\n" +
+            "                        }\n" +
+            "                    };\n" +
+            "                }\n" +
+            "            };\n" +
+            "\n" +
+            "            window.ePayco.checkout._checkoutModule.createTransaction(transaction, 'standard').then(function(respuesta) {\n" +
+            "                document.getElementById(\"resultado\").style.display = \"block\";\n" +
+            "                document.getElementById(\"resultado\").innerHTML = \"<strong>Sesión sandbox creada:</strong> \" + (respuesta.sessionId || 'sin id') + \"<br><strong>URL:</strong> \" + (respuesta.url || 'sin url');\n" +
+            "                // Notificar al backend local con la sessionId real para sincronizar estados\n" +
+            "                try {\n" +
+            "                    var sid = respuesta.sessionId || '';\n" +
+            "                    var idPago = " + (backendPagoId != null ? backendPagoId.toString() : "null") + ";\n" +
+            "                    if (sid && idPago) {\n" +
+            "                        fetch('/checkout/callback?sessionId=' + encodeURIComponent(sid) + '&idPago=' + encodeURIComponent(idPago)).then(function(r){ return r.text(); }).then(function(txt){ console.log('Callback backend:', txt); });\n" +
+            "                    }\n" +
+            "                } catch(e) { console.log('Error notificando backend', e); }\n" +
+            "                if (respuesta && respuesta.url) {\n" +
+            "                    window.open(respuesta.url, '_blank');\n" +
+            "                }\n" +
+            "            }).catch(function(err) {\n" +
+            "                console.log(err);\n" +
+            "                document.getElementById(\"resultado\").style.display = \"block\";\n" +
+            "                document.getElementById(\"resultado\").innerHTML = \"<strong>Error del sandbox:</strong> \" + (err && err.message ? err.message : err);\n" +
+            "            });\n" +
             "        }\n" +
-            "        el.dispatchEvent(new Event('change', { bubbles: true }));\n" +
-            "        el.blur();\n" +
-            "      }\n" +
-            "      function findAndFill() {\n" +
-            "        let input = document.querySelector('#miepayco input[placeholder*=\"$0\"]');\n" +
-            "        if (!input) input = document.querySelector('#miepayco input[type=\"text\"]');\n" +
-            "        if (!input) input = document.querySelector('#miepayco input');\n" +
-            "        if (input && !input.dataset.filled) {\n" +
-            "          simulateTyping(input, targetAmount);\n" +
-            "          input.dataset.filled = 'true';\n" +
-            "          return true;\n" +
-            "        }\n" +
-            "        return false;\n" +
-            "      }\n" +
-            "      setTimeout(findAndFill, 500);\n" +
-            "      const observer = new MutationObserver(() => {\n" +
-            "        if (findAndFill()) observer.disconnect();\n" +
-            "      });\n" +
-            "      observer.observe(document.getElementById('miepayco'), { childList: true, subtree: true });\n" +
-            "      let attempts = 0;\n" +
-            "      const interval = setInterval(() => {\n" +
-            "        if (findAndFill() || attempts++ > 20) clearInterval(interval);\n" +
-            "      }, 500);\n" +
-            "    })();\n" +
-            "  </script>\n" +
+            "    </script>\n" +
+            "\n" +
+            "    <div class=\"card\">\n" +
+            "        <h3>Tarjetas de Crédito de Pruebas</h3>\n" +
+            "        <p class=\"hint\"><strong>Aceptada</strong>: Visa 4575623182290326, expiración 12/2027, CVV 123.</p>\n" +
+            "        <p class=\"hint\"><strong>Fondos insuficientes</strong>: Visa 4151611527583283, expiración 12/2027, CVV 123.</p>\n" +
+            "        <p class=\"hint\"><strong>Fallida</strong>: Mastercard 5170394090379427, expiración 12/2027, CVV 123.</p>\n" +
+            "        <p class=\"hint\"><strong>Pendiente</strong>: American Express 373118856457642, expiración 12/2027, CVV 123.</p>\n" +
+            "    </div>\n" +
+            "\n" +
             "</body>\n" +
             "</html>";
 }
 
 
-    private double calcularTotalTurno(int idTurno) {
+    private double calcularTotalTurno() {
         return 15000.0;
     }
 
@@ -353,7 +452,6 @@ private String construirHtmlCheckout(double total, String miepaycoUrl) {
             Pago pago = lista.get(0);
             return (int) pago.getIdPago();
         } catch (Exception e) {
-            e.printStackTrace();
             return -1;
         }
     }
