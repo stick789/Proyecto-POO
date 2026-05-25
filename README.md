@@ -34,7 +34,7 @@
 
 ## Pasarela de Pagos Launcher
 
-Clase temporal para lanzar la vista de la pasarela de pagos.
+Clase temporal para lanzar la vista de la pasarela de pagos. Nunca se va a poder completar un pego porque la cuenta no esta habilitada para recibirlos
 
 <details>
 <summary>📄 Ver código completo (PasarelaPagosLauncher.java)</summary>
@@ -123,3 +123,9 @@ public class PasarelaPagosLauncher extends Application {
 >Designar rol al usuario recién registrado para evitar errores.
 >
 >Añadir finalmente pasarela de pagos y JasperReports y conectarlos al programa/base de datos para así tener el sistema completo.
+>
+
+# Ultimos pendientes
+
+> [!NOTE]
+>Mejorar interface, Añadir Jasper, y organizar presios dependiendo de categoria. Ademas de preparar presentación final.
