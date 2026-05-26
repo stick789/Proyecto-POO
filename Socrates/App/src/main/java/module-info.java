@@ -11,7 +11,7 @@ module socratesGui {
     requires com.fasterxml.jackson.core;
     requires mysql.connector.j;
     requires net.sf.jasperreports.core;
-    requires transitive java.sql;
+    requires java.sql;
 
     // requires transitive: tipos de estos módulos aparecen en la API pública
     // de clases exportadas (Connection en Conexion.java, Stage en App.java)
