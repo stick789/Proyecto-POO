@@ -1,11 +1,13 @@
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\entidades\Gimnasio.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\dao\IInstalacionDAO.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\negocio\TurnoControl.java
+c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\negocio\VentaControl.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\socratesGui\RegistroController.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\LogicaCita\ServicioTurnos.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\dao\InstalacionDAO.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\dao\TurnoDAO.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\LogicaCita\HistorialCitasServicio.java
+c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\reportes\PrecompileReports.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\dao\IPersonaDAO.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\negocio\PagoControl.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\service\ApiService.java
@@ -20,6 +22,7 @@ c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\dao\IEntrenador
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\LogicaCita\PoliticaCancelacion.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\service\EpaycoService.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\database\Conexion.java
+c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\reportes\ReporteService.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\entidades\Instalacion.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\entidades\Entrenador.java
 c:\Users\LENOVO\Socrates\Proyecto-POO\Socrates\App\src\main\java\dao\AuditLogDAO.java
