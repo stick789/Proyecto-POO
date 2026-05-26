@@ -258,7 +258,6 @@ CREATE TABLE `turno` (
   `id_usuario` int(11) NOT NULL,
   `id_instalacion` int(11) NOT NULL,
   `id_entrenador` int(11) DEFAULT NULL,
-  `numero_carril_assigned` int(11) DEFAULT NULL,
   `estado` varchar(20) DEFAULT 'RESERVADO',
   `idSede` int(11) DEFAULT NULL,
   `numero_carril_asignado` int(11) DEFAULT NULL
@@ -268,11 +267,11 @@ CREATE TABLE `turno` (
 -- Volcado de datos para la tabla `turno`
 --
 
-INSERT INTO `turno` (`idTurno`, `fechaHora`, `duracionMinutos`, `id_usuario`, `id_instalacion`, `id_entrenador`, `numero_carril_assigned`, `estado`, `idSede`, `numero_carril_asignado`) VALUES
-(1, '2026-05-25 08:00:00', 60, 2, 2, NULL, 3, 'RESERVADO', 1, NULL),
-(2, '2026-05-26 08:00:00', 60, 2, 3, NULL, NULL, 'RESERVADO', NULL, NULL),
-(3, '2026-05-26 09:30:00', 60, 2, 3, NULL, NULL, 'RESERVADO', NULL, NULL),
-(4, '2026-05-26 06:00:00', 60, 2, 3, NULL, NULL, 'RESERVADO', NULL, NULL);
+INSERT INTO `turno` (`idTurno`, `fechaHora`, `duracionMinutos`, `id_usuario`, `id_instalacion`, `id_entrenador`, `estado`, `idSede`, `numero_carril_asignado`) VALUES
+(1, '2026-05-25 08:00:00', 60, 2, 2, NULL, 'RESERVADO', 1, NULL),
+(2, '2026-05-26 08:00:00', 60, 2, 3, NULL, 'RESERVADO', NULL, NULL),
+(3, '2026-05-26 09:30:00', 60, 2, 3, NULL, 'RESERVADO', NULL, NULL),
+(4, '2026-05-26 06:00:00', 60, 2, 3, NULL, 'RESERVADO', NULL, NULL);
 
 -- --------------------------------------------------------
 
