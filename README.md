@@ -148,3 +148,16 @@ public class PasarelaPagosLauncher extends Application {
 
 > [!NOTE]
 >Mejorar interface, Añadir Jasper, y organizar presios dependiendo de categoria. Ademas de preparar presentación final.
+
+**Credenciales de prueba**
+
+- **ESTUDIANTE**: estudiante@test.com — **Contraseña:** TestEstudiante123!
+- **Categoría A**: userA@test.com — **Contraseña:** TestUserA123!
+- **Categoría B**: userB@test.com — **Contraseña:** TestUserB123!
+- **Categoría C**: userC@test.com — **Contraseña:** TestUserC123!
+
+**Cómo importar la BD / añadir estas cuentas**
+
+- Importar el dump completo:
+```bash
+mysql -u USUARIO -p proyecto_poo < "C:/Users/LENOVO/Socrates/Proyecto-POO/proyecto_poo (1).sql"

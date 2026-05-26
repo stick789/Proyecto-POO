@@ -39,10 +39,6 @@ public class PagoDAO implements IPagoDAO {
 
     // ── SQL (columnas en camelCase tal como define el SQL) ────────────────────
 
-    private static final String SQL_INSERT =
-            "INSERT INTO pagos (id_turno, id_usuario, monto, metodoPago, estadoPago) " +
-            "VALUES (?, ?, ?, ?, ?)";
-
     private static final String SQL_SELECT_BASE =
             "SELECT idPago, id_turno, id_usuario, monto, metodoPago, estadoPago, fechaPago, epayco_session_id, epayco_ref_payco " +
             "FROM pagos ";
@@ -119,6 +115,26 @@ public class PagoDAO implements IPagoDAO {
             }
         } catch (SQLException e) {
             throw new RuntimeException("Error al buscar pago id=" + id, e);
+        } finally {
+            conexion.desconectar();
+        }
+        return Optional.empty();
+    }
+
+    public Optional<Pago> buscarPorRefPayco(String refPayco) {
+        if (refPayco == null || refPayco.isBlank()) return Optional.empty();
+
+        Connection con = conexion.conectar();
+        if (con == null) return Optional.empty();
+
+        String sql = SQL_SELECT_BASE + "WHERE epayco_ref_payco = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, refPayco.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return Optional.of(mapear(rs));
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Error al buscar pago por ref_payco=" + refPayco, e);
         } finally {
             conexion.desconectar();
         }

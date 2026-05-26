@@ -3,7 +3,16 @@ package socratesGui;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.text.NumberFormat;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Timer;
 
@@ -18,6 +27,7 @@ import dao.PersonaDAO;
 import dao.TurnoDAO;
 import entidades.Pago;
 import entidades.Turno;
+import entidades.Usuario;
 import javafx.application.HostServices;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
@@ -50,6 +60,182 @@ public class PasarelaPagosController {
     private Timer verificationTimer;
     private boolean pagoFinalizado = false;
     private boolean pagoIniciado = false;
+    private static final int PUERTO_LOCAL_EPAYCO = 8080;
+
+    private void iniciarServidorCheckoutSiNecesario() throws IOException {
+        if (checkoutServer != null) return;
+
+        try {
+            checkoutServer = HttpServer.create(new InetSocketAddress("127.0.0.1", PUERTO_LOCAL_EPAYCO), 0);
+        } catch (IOException ex) {
+            txtLog.appendText("⚠️ No se pudo usar el puerto 8080; intentando puerto dinámico.\n");
+            checkoutServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        }
+        checkoutServer.createContext("/checkout", (HttpExchange exchange) -> {
+            String sessionId = valorParam(parseQueryParams(exchange.getRequestURI() != null ? exchange.getRequestURI().getRawQuery() : null), "sessionId");
+            byte[] response = construirHtmlCheckout(sessionId).getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "text/html; charset=UTF-8");
+            exchange.sendResponseHeaders(200, response.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(response);
+            }
+        });
+
+        checkoutServer.createContext("/epayco-response", (HttpExchange exchange) -> {
+            String query = exchange.getRequestURI() != null ? exchange.getRequestURI().getRawQuery() : null;
+            try {
+                String headersDump = headersToText(exchange);
+                String body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                String dump = "[RESPONSE] QUERY=" + (query != null ? query : "") + "\nHEADERS=" + headersDump + "\nBODY=" + body + "\n";
+                appendRawPayloadLog("epayco-response", dump);
+            } catch (Exception ex) {
+                System.out.println("[PasarelaPagosController] No se pudo volcar payload response: " + ex.getMessage());
+            }
+            Map<String, String> params = parseQueryParams(query);
+            String ref = valorParam(params, "ref_payco", "x_ref_payco", "ref");
+            String idPagoTxt = valorParam(params, "idPago", "paymentId", "id_pago");
+            Integer idPagoCb = parseIdPago(idPagoTxt);
+            if ((idPagoCb == null || idPagoCb <= 0) && ref != null && !ref.isBlank()) {
+                try {
+                    idPagoCb = pagoDAO.buscarPorRefPayco(ref.trim()).map(Pago::getIdPago).map(Long::intValue).orElse(null);
+                } catch (Exception ex) {
+                    System.out.println("[PasarelaPagosController] No se pudo resolver idPago desde ref_payco: " + ex.getMessage());
+                }
+            }
+
+            String estadoFinal = Pago.ESTADO_PENDIENTE;
+            if (idPagoCb != null && idPagoCb > 0 && ref != null && !ref.isBlank()) {
+                try {
+                    estadoFinal = pagosOnlineDAO.aplicarResultadoRealDesdeReferencia(idPagoCb, ref.trim());
+                } catch (Exception ex) {
+                    estadoFinal = Pago.ESTADO_PENDIENTE;
+                    System.out.println("[PasarelaPagosController] Error aplicando respuesta ePayco por referencia: " + ex.getMessage());
+                }
+            }
+
+            final Integer idPagoFinal = idPagoCb;
+            final String estadoUi = estadoFinal;
+            final String refUi = ref;
+            Platform.runLater(() -> {
+                txtLog.appendText("📩 Respuesta ePayco recibida | idPago=" + (idPagoFinal != null ? idPagoFinal : "N/A") + ", ref=" + (refUi != null ? refUi : "N/A") + ", estado=" + estadoUi + "\n");
+                if (Pago.ESTADO_COMPLETADO.equalsIgnoreCase(estadoUi)) {
+                    pagoFinalizado = true;
+                    mostrarAlerta("Éxito", "Pago confirmado por respuesta de ePayco.");
+                    cerrarVentana();
+                } else if (Pago.ESTADO_FALLIDO.equalsIgnoreCase(estadoUi)) {
+                    cerrarPorFallo("Pago rechazado/fallido según respuesta de ePayco.");
+                }
+            });
+
+            String html = "<!doctype html><html><head><meta charset='utf-8'><title>Resultado de pago</title></head>"
+                    + "<body style='font-family:Arial,sans-serif;padding:24px'>"
+                    + "<h3>Resultado recibido</h3>"
+                    + "<p>Estado: <strong>" + escapeHtml(estadoFinal) + "</strong></p>"
+                    + "<p>Ref ePayco: <strong>" + escapeHtml(ref != null ? ref : "N/A") + "</strong></p>"
+                    + "<p>Puedes volver a la aplicación.</p>"
+                    + "</body></html>";
+
+            byte[] responseBytes = html.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "text/html; charset=UTF-8");
+            exchange.sendResponseHeaders(200, responseBytes.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(responseBytes);
+            }
+        });
+
+        checkoutServer.createContext("/epayco-confirmation", (HttpExchange exchange) -> {
+            Map<String, String> params = new HashMap<>();
+            String body = "";
+            try {
+                String headersDump = headersToText(exchange);
+                body = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                String dump = "[CONFIRMATION] QUERY=" + (exchange.getRequestURI() != null ? exchange.getRequestURI().getRawQuery() : "") + "\nHEADERS=" + headersDump + "\nBODY=" + body + "\n";
+                appendRawPayloadLog("epayco-confirmation", dump);
+            } catch (Exception ex) {
+                System.out.println("[PasarelaPagosController] No se pudo volcar payload confirmation: " + ex.getMessage());
+            }
+            params.putAll(parseQueryParams(exchange.getRequestURI() != null ? exchange.getRequestURI().getRawQuery() : null));
+            params.putAll(parseQueryParams(body));
+
+            String ref = valorParam(params, "ref_payco", "x_ref_payco");
+            String cod = valorParam(params, "x_cod_response", "cod_response");
+            String resp = valorParam(params, "x_response", "response");
+            String extra1 = valorParam(params, "x_extra1", "extra1");
+            String invoice = valorParam(params, "x_invoice", "invoice", "x_id_invoice");
+
+            Integer idPagoCb = parseIdPago(extra1);
+            if ((idPagoCb == null || idPagoCb <= 0)) idPagoCb = parseIdPago(invoice);
+            if ((idPagoCb == null || idPagoCb <= 0) && ref != null && !ref.isBlank()) {
+                try {
+                    idPagoCb = pagoDAO.buscarPorRefPayco(ref.trim()).map(Pago::getIdPago).map(Long::intValue).orElse(null);
+                } catch (Exception ex) {
+                    System.out.println("[PasarelaPagosController] No se pudo resolver idPago desde webhook ref_payco: " + ex.getMessage());
+                }
+            }
+
+            String estadoFinal = Pago.ESTADO_PENDIENTE;
+            if (idPagoCb != null && idPagoCb > 0) {
+                try {
+                    estadoFinal = pagosOnlineDAO.aplicarResultadoRealDesdeCallback(idPagoCb, cod, resp, ref);
+                } catch (Exception ex) {
+                    estadoFinal = Pago.ESTADO_PENDIENTE;
+                    System.out.println("[PasarelaPagosController] Error procesando webhook ePayco: " + ex.getMessage());
+                }
+            }
+
+            final Integer idPagoFinal = idPagoCb;
+            final String estadoUi = estadoFinal;
+            Platform.runLater(() -> txtLog.appendText("📡 Webhook ePayco recibido | idPago=" + (idPagoFinal != null ? idPagoFinal : "N/A") + ", estado=" + estadoUi + "\n"));
+
+            byte[] ok = "OK".getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, ok.length);
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(ok);
+            }
+        });
+        checkoutServer.setExecutor(null);
+        checkoutServer.start();
+    }
+
+    private void appendRawPayloadLog(String label, String content) {
+        try {
+            Path p = Paths.get("logs/epayco_raw_payloads.log");
+            if (p.getParent() != null) Files.createDirectories(p.getParent());
+            String entry = java.time.Instant.now().toString() + " " + label + "\n" + content + "\n----\n";
+            Files.write(p, entry.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+            Platform.runLater(() -> txtLog.appendText("📝 Payload guardado en logs/epayco_raw_payloads.log: " + label + "\n"));
+        } catch (Exception e) {
+            System.out.println("[PasarelaPagosController] Error al guardar payload: " + e.getMessage());
+        }
+    }
+
+    private String headersToText(HttpExchange exchange) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("METHOD=").append(exchange.getRequestMethod()).append("; ");
+        exchange.getRequestHeaders().forEach((k, v) -> sb.append(k).append("=").append(String.join("|", v)).append("; "));
+        return sb.toString();
+    }
+
+    private Map<String, String> parseQueryParams(String query) {
+        Map<String, String> params = new HashMap<>();
+        if (query == null || query.isBlank()) return params;
+        String[] pairs = query.split("&");
+        for (String pair : pairs) {
+            if (pair == null || pair.isBlank()) continue;
+            String[] kv = pair.split("=", 2);
+            String k = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
+            String v = kv.length > 1 ? URLDecoder.decode(kv[1], StandardCharsets.UTF_8) : "";
+            params.put(k, v);
+        }
+        return params;
+    }
+
+    private String valorParam(Map<String, String> params, String... keys) {
+        for (String key : keys) {
+            if (params.containsKey(key)) return params.get(key);
+        }
+        return null;
+    }
 
     private void cerrarPorFallo(String motivo) {
         pagoFinalizado = true;
@@ -65,7 +251,7 @@ public class PasarelaPagosController {
             lblIdTurno.setText(String.valueOf(turno.getIdTurno()));
             double total = calcularTotalTurno();
             this.totalTurno = total;
-            lblTotal.setText("$ " + String.format("%,.2f", total));
+            lblTotal.setText(formatearPesos(total));
             lblDescripcion.setText("Pago turno #" + turno.getIdTurno());
             txtLog.appendText("ℹ️ Turno cargado. Presiona 'PAGAR CON TARJETA' para abrir ePayco.\n");
         }
@@ -158,40 +344,38 @@ public class PasarelaPagosController {
                 return;
             }
 
+            iniciarServidorCheckoutSiNecesario();
+            String localBaseUrl = "http://127.0.0.1:" + checkoutServer.getAddress().getPort();
+            String responseUrl = ConfigLoader.get("epayco.responseUrl");
+            if (responseUrl == null || responseUrl.isBlank() || responseUrl.contains(":8080/")) {
+                responseUrl = localBaseUrl + "/epayco-response?idPago={idPago}";
+            }
+            String confirmationUrl = ConfigLoader.get("epayco.confirmationUrl");
+            if (confirmationUrl == null || confirmationUrl.isBlank() || confirmationUrl.contains(":8080/")) {
+                confirmationUrl = localBaseUrl + "/epayco-confirmation?idPago={idPago}";
+                txtLog.appendText("⚠️ No hay confirmationUrl pública en config.properties; usando local solo para pruebas.\n");
+            }
+            txtLog.appendText("🔗 Response ePayco: " + responseUrl + "\n");
+            txtLog.appendText("🔗 Confirmation ePayco: " + confirmationUrl + "\n");
+
             String descripcion = lblDescripcion.getText();
-            String sessionOrUrl = pagosOnlineDAO.iniciarPagoConTarjeta(turnoActual.getIdTurno(), total, descripcion);
+            String sessionOrUrl = pagosOnlineDAO.iniciarPagoConTarjeta(
+                    turnoActual.getIdTurno(), total, descripcion, responseUrl, confirmationUrl);
             pagoIniciado = true;
             idPagoGenerado = obtenerIdPagoPorTurno(turnoActual.getIdTurno());
 
-            // Si el backend devolvió una URL de pago, abrirla directamente (evita que JS cree otra sesión distinta)
-            if (sessionOrUrl != null && sessionOrUrl.toLowerCase().startsWith("http")) {
-                txtLog.appendText("🟢 Abriendo URL de pago provista por backend: " + sessionOrUrl + "\n");
-                if (hostServices != null) {
-                    hostServices.showDocument(sessionOrUrl);
-                } else {
-                    txtLog.appendText("🔗 Abra manualmente: " + sessionOrUrl + "\n");
-                    mostrarAlerta("Información", "No pude abrir el navegador automáticamente. Copia y pega la URL:\n" + sessionOrUrl);
-                }
+            String sessionId = sessionOrUrl;
+            String checkoutUrl = "http://127.0.0.1:" + checkoutServer.getAddress().getPort() + "/checkout?sessionId=" + sessionId;
+            txtLog.appendText("🟢 Sesión creada. sessionId=" + sessionId + "\n");
+            if (hostServices != null) {
+                hostServices.showDocument(checkoutUrl);
             } else {
-                // fallback: servir página local que usaba JS para crear la sesión (mantener compatibilidad)
-                String html = construirHtmlCheckout(total, publicKey, idPagoGenerado);
-                try {
-                    abrirCheckoutLocal(html);
-                    String uri = "http://127.0.0.1:" + checkoutServer.getAddress().getPort() + "/checkout";
-                    if (hostServices != null) {
-                        hostServices.showDocument(uri);
-                    } else {
-                        txtLog.appendText("🔗 Abra manualmente: " + uri + "\n");
-                        mostrarAlerta("Información", "No pude abrir el navegador automáticamente. Copia y pega la URL:\n" + uri);
-                    }
-                } catch (IOException e) {
-                    txtLog.appendText("🔴 Error preparando checkout local: " + e.getMessage() + "\n");
-                    mostrarAlerta("Error", "No pude preparar la pasarela local: " + e.getMessage());
-                }
+                txtLog.appendText("🔗 Abra manualmente: " + checkoutUrl + "\n");
+                mostrarAlerta("Información", "No pude abrir el navegador automáticamente. Copia y pega la URL:\n" + checkoutUrl);
             }
 
-            txtLog.appendText("🟢 Pasarela abierta en navegador. Session/URL: " + sessionOrUrl + "\n");
-            mostrarAlerta("Información", "La pasarela se abrió en tu navegador.\nCompleta el pago y luego presiona 'VERIFICAR PAGO'.");
+            txtLog.appendText("🟢 Checkout abierto en navegador.\n");
+            mostrarAlerta("Información", "La pasarela se abrió en tu navegador. Completa el pago y espera la redirección de ePayco.");
             iniciarVerificacionAutomatica();
         } catch (Exception e) {
             txtLog.appendText("🔴 Error al iniciar pago: " + e.getMessage() + "\n");
@@ -230,6 +414,8 @@ public class PasarelaPagosController {
                 txtLog.appendText("⏳ Pago pendiente. Intente más tarde.\n");
                 mostrarAlerta("Pendiente", "El pago aún no ha sido confirmado.");
             }
+        } catch (RuntimeException e) {
+            cerrarPorFallo("Error al verificar (runtime): " + e.getMessage());
         } catch (Exception e) {
             cerrarPorFallo("Error al verificar: " + e.getMessage());
         }
@@ -248,26 +434,17 @@ public class PasarelaPagosController {
         stage.close();
     }
 
-    private void abrirCheckoutLocal(String html) throws IOException {
-        if (checkoutServer != null) {
-            checkoutServer.stop(0);
-            checkoutServer = null;
-        }
-
-        checkoutServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        // Contexto principal que sirve la página de checkout
-        checkoutServer.createContext("/checkout", (HttpExchange exchange) -> {
-            byte[] response = html.getBytes(StandardCharsets.UTF_8);
-            exchange.getResponseHeaders().add("Content-Type", "text/html; charset=UTF-8");
-            exchange.sendResponseHeaders(200, response.length);
-            try (OutputStream outputStream = exchange.getResponseBody()) {
-                outputStream.write(response);
+    private Integer parseIdPago(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            String cleaned = value.trim();
+            if (cleaned.toUpperCase().startsWith("PAGO-")) {
+                cleaned = cleaned.substring(5).trim();
             }
-        });
-
-       
-        checkoutServer.setExecutor(null);
-        checkoutServer.start();
+            return Integer.valueOf(cleaned);
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     private String escapeHtml(String value) {
@@ -280,148 +457,61 @@ public class PasarelaPagosController {
                 .replace(">", "&gt;");
     }
 
-private String construirHtmlCheckout(double total, String publicKey, Integer backendPagoId) {
-    String amount = String.valueOf(Math.round(total));
-    String clientKey = escapeHtml(publicKey);
+    private String formatearPesos(double valor) {
+        NumberFormat formato = NumberFormat.getNumberInstance(new Locale("es", "CO"));
+        formato.setMaximumFractionDigits(0);
+        formato.setMinimumFractionDigits(0);
+        return "$ " + formato.format(Math.round(valor));
+    }
+
+private String construirHtmlCheckout(String sessionId) {
+    String session = escapeHtml(sessionId != null ? sessionId : "");
 
     return "<!DOCTYPE html>\n" +
             "<html lang=\"es\">\n" +
             "<head>\n" +
             "    <meta charset=\"UTF-8\">\n" +
             "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
-            "    <title>Prueba de Pago ePayco Sandbox</title>\n" +
+            "    <title>Checkout ePayco</title>\n" +
             "    <script src=\"https://checkout.epayco.co/checkout-v2.js\"></script>\n" +
             "    <style>\n" +
-            "        body { font-family: Arial, sans-serif; padding: 20px; max-width: 760px; margin: 0 auto; background: #121212; color: #f5f5f5; }\n" +
-            "        .card { background: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 20px; margin-bottom: 16px; }\n" +
-            "        .form-group { margin-bottom: 15px; }\n" +
-            "        label { display: block; margin-bottom: 5px; font-weight: bold; }\n" +
-            "        input { width: 100%; padding: 10px; box-sizing: border-box; border-radius: 8px; border: 1px solid #444; background: #111; color: #fff; }\n" +
-            "        button { background-color: #ff7a00; color: white; padding: 10px 15px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }\n" +
-            "        button:hover { background-color: #e56f00; }\n" +
-            "        #resultado { margin-top: 20px; padding: 10px; border: 1px solid #333; background: #111; border-radius: 8px; display: none; }\n" +
-            "        .hint { color: #cfcfcf; font-size: 0.95rem; line-height: 1.4; }\n" +
-            "        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }\n" +
+            "        body { font-family: Arial, sans-serif; padding: 24px; max-width: 760px; margin: 0 auto; background: #fafafa; color: #111; }\n" +
+            "        .card { background: white; border: 1px solid #ddd; border-radius: 12px; padding: 20px; margin-bottom: 16px; }\n" +
+            "        button { background-color: #16a34a; color: white; padding: 12px 18px; border: none; border-radius: 8px; cursor: pointer; font-weight: 700; }\n" +
+            "        button:hover { background-color: #15803d; }\n" +
+            "        .hint { color: #444; font-size: 0.95rem; line-height: 1.45; }\n" +
+            "        code { background:#f3f4f6; padding:2px 4px; border-radius:4px; }\n" +
             "    </style>\n" +
             "</head>\n" +
             "<body>\n" +
             "\n" +
-            "    <h2>Formulario de Prueba ePayco Sandbox</h2>\n" +
+            "    <h2>Checkout ePayco</h2>\n" +
             "    <div class=\"card\">\n" +
             "        <div class=\"hint\">\n" +
-            "            Este flujo usa <strong>checkout.epayco.co</strong> con <strong>test: true</strong>, que es el modo de pruebas real del checkout v2.\n" +
+            "            Se abre el checkout oficial con <code>sessionId</code> y <code>type: standard</code>, como indica la documentación.\n" +
+            "            Si la redirección final no llega a la app, revisa la URL <code>response</code> y el webhook <code>confirmation</code>.\n" +
             "        </div>\n" +
             "    </div>\n" +
             "\n" +
             "    <script>\n" +
-            "        var client_key = \"" + clientKey + "\";\n" +
-            "        window.ePayco.checkout.configure({ key: client_key, test: true });\n" +
+            "        var sessionId = \"" + session + "\";\n" +
+            "        function abrirCheckout() {\n" +
+            "            var checkout = ePayco.checkout.configure({\n" +
+            "                sessionId: sessionId,\n" +
+            "                type: 'standard',\n" +
+            "                test: true\n" +
+            "            });\n" +
+            "            checkout.onCreated(() => console.log('Checkout creado'));\n" +
+            "            checkout.onErrors((e) => console.error('Checkout error', e));\n" +
+            "            checkout.onClosed(() => console.log('Checkout cerrado'));\n" +
+            "            checkout.open();\n" +
+            "        }\n" +
             "    </script>\n" +
             "\n" +
             "    <div class=\"card\">\n" +
-            "    <div class=\"grid\">\n" +
-            "        <div class=\"form-group\">\n" +
-            "            <label>Nombre del Titular:</label>\n" +
-            "            <input type=\"text\" id=\"nombre\" value=\"PRUEBA USUARIO\">\n" +
-            "        </div>\n" +
-            "        <div class=\"form-group\">\n" +
-            "            <label>Correo:</label>\n" +
-            "            <input type=\"text\" id=\"email\" value=\"test@prueba.com\">\n" +
-            "        </div>\n" +
+            "        <p class=\"hint\">SessionId: <code>" + session + "</code></p>\n" +
+            "        <button onclick=\"abrirCheckout()\">Abrir checkout ePayco</button>\n" +
             "    </div>\n" +
-            "\n" +
-            "    <div class=\"form-group\">\n" +
-            "        <label>Descripción:</label>\n" +
-            "        <input type=\"text\" id=\"descripcion\" value=\"Prueba de tarjeta en sandbox\">\n" +
-            "    </div>\n" +
-            "\n" +
-            "    <div class=\"grid\">\n" +
-            "        <div class=\"form-group\">\n" +
-            "            <label>Documento:</label>\n" +
-            "            <input type=\"text\" id=\"documento\" value=\"123456789\">\n" +
-            "        </div>\n" +
-            "        <div class=\"form-group\">\n" +
-            "            <label>Moneda:</label>\n" +
-            "            <input type=\"text\" id=\"moneda\" value=\"COP\">\n" +
-            "        </div>\n" +
-            "    </div>\n" +
-            "\n" +
-            "    <button onclick=\"realizarPago()\">Abrir checkout sandbox por $" + amount + " COP</button>\n" +
-            "\n" +
-            "    <div id=\"resultado\"></div>\n" +
-            "\n" +
-            "    <script>\n" +
-            "        function realizarPago() {\n" +
-            "            var nombre = document.getElementById(\"nombre\").value.trim();\n" +
-            "            var email = document.getElementById(\"email\").value.trim();\n" +
-            "            var descripcion = document.getElementById(\"descripcion\").value.trim();\n" +
-            "            var documento = document.getElementById(\"documento\").value.trim();\n" +
-            "            var moneda = document.getElementById(\"moneda\").value.trim() || 'COP';\n" +
-            "            if (!nombre || !email || !descripcion || !documento) {\n" +
-            "                alert(\"Completa los datos básicos para abrir el checkout sandbox.\");\n" +
-            "                return;\n" +
-            "            }\n" +
-            "\n" +
-            "            var transaction = {\n" +
-            "                type: 'checkout',\n" +
-            "                key: client_key,\n" +
-            "                test: true,\n" +
-             "                ip: '0.0.0.0',\n" +
-            "                name: nombre,\n" +
-            "                description: descripcion,\n" +
-            "                currency: moneda,\n" +
-            "                amount: '" + amount + "',\n" +
-            "                lang: 'es',\n" +
-            "                checkoutType: 'standard',\n" +
-            "                emailBilling: email,\n" +
-            "                nameBilling: nombre,\n" +
-            "                typeDocBilling: 'CC',\n" +
-            "                numberDocBilling: documento,\n" +
-            "                toApiPayload: function() {\n" +
-            "                    return {\n" +
-            "                        transaction: {\n" +
-            "                            epaycoKey: this.key,\n" +
-            "                            epaycoTest: true,\n" +
-            "                            epaycoIp: this.ip,\n" +
-            "                            epaycoName: this.name,\n" +
-            "                            epaycoDescription: this.description,\n" +
-            "                            epaycoCurrency: this.currency,\n" +
-            "                            epaycoAmount: Number(this.amount),\n" +
-            "                            epaycoLang: this.lang,\n" +
-            "                            epaycoMethod: 'POST',\n" +
-            "                            epaycoCheckoutType: this.checkoutType,\n" +
-            "                            epaycoBilling: {\n" +
-            "                                email: this.emailBilling,\n" +
-            "                                name: this.nameBilling,\n" +
-            "                                typeDoc: this.typeDocBilling,\n" +
-            "                                numberDoc: this.numberDocBilling\n" +
-            "                            }\n" +
-            "                        }\n" +
-            "                    };\n" +
-            "                }\n" +
-            "            };\n" +
-            "\n" +
-            "            window.ePayco.checkout._checkoutModule.createTransaction(transaction, 'standard').then(function(respuesta) {\n" +
-            "                document.getElementById(\"resultado\").style.display = \"block\";\n" +
-            "                document.getElementById(\"resultado\").innerHTML = \"<strong>Sesión sandbox creada:</strong> \" + (respuesta.sessionId || 'sin id') + \"<br><strong>URL:</strong> \" + (respuesta.url || 'sin url');\n" +
-            "                // Notificar al backend local con la sessionId real para sincronizar estados\n" +
-            "                try {\n" +
-            "                    var sid = respuesta.sessionId || '';\n" +
-            "                    var idPago = " + (backendPagoId != null ? backendPagoId.toString() : "null") + ";\n" +
-            "                    if (sid && idPago) {\n" +
-            "                        fetch('/checkout/callback?sessionId=' + encodeURIComponent(sid) + '&idPago=' + encodeURIComponent(idPago)).then(function(r){ return r.text(); }).then(function(txt){ console.log('Callback backend:', txt); });\n" +
-            "                    }\n" +
-            "                } catch(e) { console.log('Error notificando backend', e); }\n" +
-            "                if (respuesta && respuesta.url) {\n" +
-            "                    window.open(respuesta.url, '_blank');\n" +
-            "                }\n" +
-            "            }).catch(function(err) {\n" +
-            "                console.log(err);\n" +
-            "                document.getElementById(\"resultado\").style.display = \"block\";\n" +
-            "                document.getElementById(\"resultado\").innerHTML = \"<strong>Error del sandbox:</strong> \" + (err && err.message ? err.message : err);\n" +
-            "            });\n" +
-            "        }\n" +
-            "    </script>\n" +
             "\n" +
             "    <div class=\"card\">\n" +
             "        <h3>Tarjetas de Crédito de Pruebas</h3>\n" +
@@ -437,8 +527,61 @@ private String construirHtmlCheckout(double total, String publicKey, Integer bac
 
 
     private double calcularTotalTurno() {
-        return 15000.0;
+        if (turnoActual == null) {
+            txtLog.appendText("⚠️ No hay turno para calcular total.\n");
+            return 0.0;
+        }
+        Usuario usuario = turnoActual.getUsuario();
+        if(usuario == null) {
+            txtLog.appendText("⚠️ El turno no tiene un usuario asociado para calcular total.\n");
+            return 0.0;
+        }
+        double precioBase = 25000.0; // Precio base por turno en COP
+        /*
+        *Se verifica que el Rol sea Usuario
+        *La categoria No Afiliado es == a Null
+        */
+        try{
+            String rol = usuario.getRolBD();
+            String categoria = usuario.getCategoria();
+            String categoriaNormalizada = categoria != null ? categoria.trim().toUpperCase() : "";
+
+            boolean esUsuario = "Usuario".equalsIgnoreCase(rol);
+            boolean categoriaValida = categoria != null && !categoria.trim().isEmpty() && !categoria.trim().equalsIgnoreCase("No Afiliado");
+
+            if (esUsuario && categoriaValida) {
+                double descuento;
+                switch (categoriaNormalizada) {
+                    case "ESTUDIANTE":
+                        descuento = 1.00; // 100% de descuento
+                        break;
+                    case "A":
+                        descuento = 0.40; // 40% de descuento
+                        break;
+                    case "B":
+                        descuento = 0.20; // 20% de descuento
+                        break;
+                    case "C":
+                        descuento = 0.10; // 10% de descuento
+                        break;
+                    default:
+                        descuento = 0.0; // Sin descuento para categorías no reconocidas
+                        break;
+                }
+                double totalConDescuento = precioBase * (1 - descuento);
+                totalConDescuento = Math.round(totalConDescuento); // Redondear a COP sin decimales
+                txtLog.appendText("ℹ️ Usuario"+ usuario.getNombre() + " (Categoría: " + categoria + ")'. Precio base: " + formatearPesos(precioBase) + ", descuento aplicado: " + (descuento * 100) + "%, total a pagar: " + formatearPesos(totalConDescuento) + "\n");
+                return totalConDescuento;
+            } else {
+                txtLog.appendText("ℹ️ Usuario"+ usuario.getNombre() + " no cumple con los requisitos para aplicar descuentos. Se aplica precio base sin descuentos.\n");
+                return precioBase;
+            }
+        }catch (Exception e) {
+            txtLog.appendText("🔴 Error calculando total con descuento: " + e.getMessage() + ". Se aplicará precio base sin descuentos.\n");
+            return precioBase;
+        }
     }
+
 
     private int obtenerIdPagoPorTurno(int idTurno) {
         try {

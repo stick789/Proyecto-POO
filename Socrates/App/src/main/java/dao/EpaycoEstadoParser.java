@@ -34,7 +34,10 @@ public final class EpaycoEstadoParser {
             if (root.has("status") && root.get("status").isTextual()) return root.get("status").asText();
 
             String found = findStatusRecursive(root);
-            return found != null ? found : response.trim();
+            if (found != null) return found;
+
+            System.out.println("[EpaycoEstadoParser] Respuesta sin estado textual explícito; se devuelve el JSON crudo para análisis.");
+            return response.trim();
         } catch (java.io.IOException ex) {
             return response.trim();
         }
@@ -58,25 +61,28 @@ public final class EpaycoEstadoParser {
     private static String leerEstadoDesdeNodo(JsonNode node) {
         if (node == null || !node.isObject()) return null;
 
-        // Heurística para V2: si hay un nodo 'transaction' con epaycoRemainingAmount == 0
-        // y epaycoAmount > 0, lo consideramos COMPLETADO.
-        if (node.has("transaction") && node.get("transaction").isObject()) {
-            JsonNode tx = node.get("transaction");
-            try {
-                if (tx.has("epaycoRemainingAmount") && tx.has("epaycoAmount")) {
-                    double remaining = tx.get("epaycoRemainingAmount").asDouble(-1);
-                    double amount = tx.get("epaycoAmount").asDouble(-1);
-                    if (amount > 0 && remaining == 0) return "COMPLETADO";
-                }
-            } catch (Exception ignore) {
-            }
-        }
-
         if (node.has("payment") && node.get("payment").has("status") && node.get("payment").get("status").isTextual()) {
             return node.get("payment").get("status").asText();
         }
+        if (node.has("x_cod_response")) {
+            String cod = node.get("x_cod_response").asText("").trim();
+            if ("1".equals(cod)) return "Aceptada";
+            if ("2".equals(cod)) return "Rechazada";
+            if ("3".equals(cod)) return "Pendiente";
+            if ("4".equals(cod)) return "Fallida";
+            if (!cod.isBlank()) return cod;
+        }
         if (node.has("transaction") && node.get("transaction").has("status") && node.get("transaction").get("status").isTextual()) {
             return node.get("transaction").get("status").asText();
+        }
+        if (node.has("x_response") && node.get("x_response").isTextual()) {
+            return node.get("x_response").asText();
+        }
+        if (node.has("x_transaction_state") && node.get("x_transaction_state").isTextual()) {
+            return node.get("x_transaction_state").asText();
+        }
+        if (node.has("x_response_reason_text") && node.get("x_response_reason_text").isTextual()) {
+            return node.get("x_response_reason_text").asText();
         }
         if (node.has("session") && node.get("session").has("status") && node.get("session").get("status").isTextual()) {
             return node.get("session").get("status").asText();
@@ -94,6 +100,21 @@ public final class EpaycoEstadoParser {
             while (fieldNames.hasNext()) {
                 String field = fieldNames.next();
                 if ("status".equalsIgnoreCase(field) || "state".equalsIgnoreCase(field) || "result".equalsIgnoreCase(field)) {
+                    JsonNode v = node.get(field);
+                    if (v != null && v.isTextual()) return v.asText();
+                }
+                if ("x_cod_response".equalsIgnoreCase(field)) {
+                    JsonNode v = node.get(field);
+                    if (v != null) {
+                        String cod = v.asText("").trim();
+                        if ("1".equals(cod)) return "Aceptada";
+                        if ("2".equals(cod)) return "Rechazada";
+                        if ("3".equals(cod)) return "Pendiente";
+                        if ("4".equals(cod)) return "Fallida";
+                        if (v.isTextual()) return v.asText();
+                    }
+                }
+                if ("x_response".equalsIgnoreCase(field) || "x_transaction_state".equalsIgnoreCase(field) || "x_response_reason_text".equalsIgnoreCase(field)) {
                     JsonNode v = node.get(field);
                     if (v != null && v.isTextual()) return v.asText();
                 }

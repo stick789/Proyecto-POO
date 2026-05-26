@@ -36,6 +36,11 @@ public class PagosOnlineDAO {
 
 
     public String iniciarPagoConTarjeta(int idTurno, double montoTotal, String descripcion) throws Exception {
+        return iniciarPagoConTarjeta(idTurno, montoTotal, descripcion, null, null);
+    }
+
+    public String iniciarPagoConTarjeta(int idTurno, double montoTotal, String descripcion,
+                                        String responseUrlOverride, String confirmationUrlOverride) throws Exception {
         // 1. Crear el pago en BD con estado PENDIENTE
         // Tomar el usuario autenticado para que el pago quede visible en "Mis Pagos".
         int idUsuario = SesionActual.getUsuario() != null ? SesionActual.getUsuario().getId() : 0;
@@ -61,9 +66,21 @@ public class PagosOnlineDAO {
         sessionData.put("invoice", "PAGO-" + idPago);
         sessionData.put("country", "CO");
         sessionData.put("lang", "es");
+        Map<String, Object> extras = new HashMap<>();
+        extras.put("extra1", String.valueOf(idPago));
+        extras.put("extra2", String.valueOf(idTurno));
+        sessionData.put("extras", extras);
         // ePayco suele requerir URLs válidas de retorno y confirmación
-        sessionData.put("response", getOrDefault(ConfigLoader.get("epayco.responseUrl"), "https://checkout.epayco.co"));
-        sessionData.put("confirmation", getOrDefault(ConfigLoader.get("epayco.confirmationUrl"), "https://checkout.epayco.co"));
+        String responseUrl = (responseUrlOverride != null && !responseUrlOverride.isBlank())
+            ? responseUrlOverride.trim()
+            : getOrDefault(ConfigLoader.get("epayco.responseUrl"), "https://checkout.epayco.co");
+        String confirmationUrl = (confirmationUrlOverride != null && !confirmationUrlOverride.isBlank())
+            ? confirmationUrlOverride.trim()
+            : getOrDefault(ConfigLoader.get("epayco.confirmationUrl"), "https://checkout.epayco.co");
+        responseUrl = responseUrl.replace("{idPago}", String.valueOf(idPago));
+        confirmationUrl = confirmationUrl.replace("{idPago}", String.valueOf(idPago));
+        sessionData.put("response", responseUrl);
+        sessionData.put("confirmation", confirmationUrl);
         // Datos del pagador: si no hay config, usamos placeholders válidos para completar la sesión
         sessionData.put("name", getOrDefault(ConfigLoader.get("epayco.customerName"), "Cliente Prueba"));
         sessionData.put("email", getOrDefault(ConfigLoader.get("epayco.customerEmail"), "cliente@prueba.com"));
@@ -97,13 +114,150 @@ public class PagosOnlineDAO {
 
         // 5. Devolver la URL si está disponible (para que el frontend abra exactamente esa sesión),
         //    de lo contrario devolver el sessionId para compatibilidad.
-        if (paymentUrl != null && !paymentUrl.isBlank()) return paymentUrl;
-        return sessionId;
+        if (sessionId != null && !sessionId.isBlank()) return sessionId;
+        return paymentUrl;
 
      
 
 
         
+    }
+
+    public String aplicarResultadoRealDesdeCallback(int idPago, String codigoRespuesta, String textoRespuesta,
+                                                    String refPayco) throws Exception {
+        Pago pago = pagoDAO.buscarPorId(idPago)
+                .orElseThrow(() -> new Exception("No existe un pago con id " + idPago));
+
+        if (refPayco != null && !refPayco.isBlank()) {
+            try {
+                pagoDAO.actualizarRefPayco(idPago, refPayco.trim());
+            } catch (SQLException e) {
+                System.out.println("[PagosOnlineDAO] No se pudo guardar ref_payco desde callback: " + e.getMessage());
+            }
+        }
+
+        String estado = mapearEstadoDesdeCallback(codigoRespuesta, textoRespuesta);
+        if (Pago.ESTADO_COMPLETADO.equalsIgnoreCase(estado)) {
+            pagoDAO.actualizarEstado(idPago, Pago.ESTADO_COMPLETADO);
+            return Pago.ESTADO_COMPLETADO;
+        }
+
+        if (Pago.ESTADO_FALLIDO.equalsIgnoreCase(estado)) {
+            pagoDAO.actualizarEstado(idPago, Pago.ESTADO_FALLIDO);
+            cancelarTurnoAsociado(pago, idPago, "Pago rechazado/fallido según callback de ePayco");
+            return Pago.ESTADO_FALLIDO;
+        }
+
+        pagoDAO.actualizarEstado(idPago, Pago.ESTADO_PENDIENTE);
+        return Pago.ESTADO_PENDIENTE;
+    }
+
+    public String aplicarResultadoRealDesdeReferencia(int idPago, String refPayco) throws Exception {
+        if (refPayco == null || refPayco.isBlank()) {
+            return Pago.ESTADO_PENDIENTE;
+        }
+
+        // ePayco puede tardar unos segundos en reflejar el estado final por referencia.
+        // Reintentamos brevemente antes de dejarlo en PENDIENTE para evitar falsos pendientes.
+        EpaycoStatusResult statusResult = null;
+        String estado = null;
+        for (int intento = 1; intento <= 4; intento++) {
+            statusResult = epaycoService.consultarEstadoPorReferencia(refPayco.trim());
+            estado = statusResult != null ? statusResult.getEstado() : null;
+            if (estado == null) {
+                estado = Pago.ESTADO_PENDIENTE;
+            }
+
+            String e = estado.trim().toLowerCase();
+            boolean esFinal = e.contains("aprob")
+                || e.contains("acept")
+                || e.contains("approved")
+                || e.contains("completed")
+                || e.contains("success")
+                || e.contains("rechaz")
+                || e.contains("fall")
+                || e.contains("failed")
+                || e.contains("declin")
+                || e.contains("denied");
+            if (esFinal) {
+                break;
+            }
+
+            if (intento < 4) {
+                try {
+                    Thread.sleep(1500L);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+
+        if (estado == null) estado = Pago.ESTADO_PENDIENTE;
+        String estadoMapeado = normalizarEstadoExterno(estado);
+
+        if (Pago.ESTADO_COMPLETADO.equalsIgnoreCase(estadoMapeado)) {
+            pagoDAO.actualizarRefPayco(idPago, refPayco.trim());
+            pagoDAO.actualizarEstado(idPago, Pago.ESTADO_COMPLETADO);
+            return Pago.ESTADO_COMPLETADO;
+        }
+        if (Pago.ESTADO_FALLIDO.equalsIgnoreCase(estadoMapeado)) {
+            pagoDAO.actualizarRefPayco(idPago, refPayco.trim());
+            Pago pago = pagoDAO.buscarPorId(idPago).orElseThrow(() -> new Exception("No existe un pago con id " + idPago));
+            pagoDAO.actualizarEstado(idPago, Pago.ESTADO_FALLIDO);
+            cancelarTurnoAsociado(pago, idPago, "Pago rechazado/fallido según validation endpoint de ePayco");
+            return Pago.ESTADO_FALLIDO;
+        }
+
+        pagoDAO.actualizarRefPayco(idPago, refPayco.trim());
+        pagoDAO.actualizarEstado(idPago, Pago.ESTADO_PENDIENTE);
+        return Pago.ESTADO_PENDIENTE;
+    }
+
+    private String normalizarEstadoExterno(String estadoExterno) {
+        if (estadoExterno == null || estadoExterno.isBlank()) {
+            return Pago.ESTADO_PENDIENTE;
+        }
+        String normalizado = estadoExterno.trim().toLowerCase();
+        boolean isAprobado = normalizado.contains("aprob")
+            || normalizado.contains("acept")
+            || normalizado.contains("accepted")
+            || normalizado.contains("approved")
+            || normalizado.contains("success")
+            || normalizado.contains("exito")
+            || normalizado.contains("successful")
+            || normalizado.contains("complet")
+            || normalizado.contains("completed")
+            || normalizado.contains("paid")
+            || normalizado.contains("authorized");
+        if (isAprobado) return Pago.ESTADO_COMPLETADO;
+
+        boolean isRechazado = normalizado.contains("rechaz")
+            || normalizado.contains("reject")
+            || normalizado.contains("denied")
+            || normalizado.contains("declin")
+            || normalizado.contains("cancel")
+            || normalizado.contains("canceled")
+            || normalizado.contains("cancelled")
+            || normalizado.contains("failed")
+            || normalizado.contains("fallid");
+        if (isRechazado) return Pago.ESTADO_FALLIDO;
+
+        return Pago.ESTADO_PENDIENTE;
+    }
+
+    private String mapearEstadoDesdeCallback(String codigoRespuesta, String textoRespuesta) {
+        String cod = codigoRespuesta != null ? codigoRespuesta.trim() : "";
+        String txt = textoRespuesta != null ? textoRespuesta.trim().toLowerCase() : "";
+
+        // Códigos típicos ePayco: 1=aceptada, 2=rechazada, 3=pending, 4=fallida
+        if ("1".equals(cod)) return Pago.ESTADO_COMPLETADO;
+        if ("2".equals(cod) || "4".equals(cod)) return Pago.ESTADO_FALLIDO;
+        if ("3".equals(cod)) return Pago.ESTADO_PENDIENTE;
+
+        if (txt.contains("aprob") || txt.contains("acept")) return Pago.ESTADO_COMPLETADO;
+        if (txt.contains("rechaz") || txt.contains("fall") || txt.contains("error")) return Pago.ESTADO_FALLIDO;
+        return Pago.ESTADO_PENDIENTE;
     }
 
     private String getOrDefault(String value, String defaultValue) {
@@ -141,6 +295,22 @@ public class PagosOnlineDAO {
             System.out.println("[PagosOnlineDAO] Error consultando ePayco para idPago=" + idPago + ": " + ex.getMessage() + ". Se deja en PENDIENTE.");
             return "PENDIENTE";
         }
+
+        boolean tieneRefPayco = statusResult != null
+                && statusResult.getRefPayco() != null
+                && !statusResult.getRefPayco().isBlank();
+
+        // Guardrail anti-falso positivo:
+        // si llega "COMPLETADO" pero no hay ref_payco, no se confirma pago.
+        // Esto evita aprobar por inferencias ambiguas del endpoint de sesión.
+        if ("COMPLETADO".equalsIgnoreCase(raw) && !tieneRefPayco) {
+            System.out.println("[PagosOnlineDAO] COMPLETADO sin ref_payco (idPago=" + idPago + ") -> se fuerza PENDIENTE para evitar falso aprobado.");
+            raw = "PENDIENTE";
+        }
+
+        if (raw.startsWith("{")) {
+            System.out.println("[PagosOnlineDAO] La respuesta de ePayco es JSON crudo; se aplicará clasificación por contenido.");
+        }
         String normalizado = raw.toLowerCase();
 
         // Normalización robusta: aceptar variantes en español e inglés y diferentes palabras clave
@@ -171,6 +341,7 @@ public class PagosOnlineDAO {
             || normalizado.contains("waiting");
 
         if (isAprobado) {
+            System.out.println("[PagosOnlineDAO] Clasificación final idPago=" + idPago + " -> COMPLETADO | motivo=coincidencia de palabras clave en la respuesta.");
             pagoDAO.actualizarEstado(idPago, Pago.ESTADO_COMPLETADO);
             // Registrar evento en historial: pago aprobado
             try {
@@ -185,7 +356,9 @@ public class PagosOnlineDAO {
             } catch (Exception ignore) {
                 // no interrumpimos el flujo por fallos al registrar el historial
             }
+            return Pago.ESTADO_COMPLETADO;
         } else if (isRechazado) {
+            System.out.println("[PagosOnlineDAO] Clasificación final idPago=" + idPago + " -> FALLIDO | motivo=coincidencia de palabras clave de rechazo.");
             pagoDAO.actualizarEstado(idPago, Pago.ESTADO_FALLIDO);
             cancelarTurnoAsociado(pago, idPago, "Pago rechazado por ePayco");
             // Registrar evento en historial: pago fallido
@@ -207,9 +380,7 @@ public class PagosOnlineDAO {
             System.out.println("[PagosOnlineDAO] Estado no categorizado (PENDIENTE): " + raw + " (idPago=" + idPago + ")");
             return "PENDIENTE";
         }
-        // Devolver una representación legible y consistente
-        if (isAprobado) return Pago.ESTADO_COMPLETADO;
-        if (isRechazado) return Pago.ESTADO_FALLIDO;
+        System.out.println("[PagosOnlineDAO] Clasificación final idPago=" + idPago + " -> PENDIENTE | motivo=no hubo coincidencia clara de aprobado/rechazado.");
         return Pago.ESTADO_PENDIENTE;
     }
 

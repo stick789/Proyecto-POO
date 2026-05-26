@@ -866,7 +866,14 @@ private void abrirPasarelaPago(Turno turno) {
                 cargarInicio();
             refrescarMapaPiscinaAbierto();
 
-             abrirPasarelaPago(nuevo);
+            // Si el usuario es ESTUDIANTE, no enviar a pasarela: agendar directamente
+            String categoriaUsuario = usuario.getCategoria();
+            if (categoriaUsuario != null && categoriaUsuario.trim().equalsIgnoreCase("ESTUDIANTE")) {
+                // Mensaje informativo ya mostrado arriba; evitar abrir la pasarela de pagos
+                lblErrorAgendar.setText(lblErrorAgendar.getText() + " (Usuario ESTUDIANTE: exento de pago)");
+            } else {
+                abrirPasarelaPago(nuevo);
+            }
 
         } catch (IllegalArgumentException | IllegalStateException | IllegalAccessError ex) {
             lblErrorAgendar.setStyle("-fx-text-fill: #C44D03; -fx-font-size: 12;");

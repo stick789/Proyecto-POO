@@ -112,6 +112,26 @@ public class EpaycoService {
         return new EpaycoStatusResult("PENDIENTE", mejorRef);
     }
 
+    /**
+     * Consulta el detalle real de la transacción por `ref_payco` usando el endpoint
+     * de validación documentado por ePayco.
+     */
+    public EpaycoStatusResult consultarEstadoPorReferencia(String refPayco) throws Exception {
+        if (refPayco == null || refPayco.isBlank()) {
+            throw new IllegalArgumentException("refPayco no puede ser vacío");
+        }
+
+        String response = apiService.get("https://secure.epayco.co/validation/v1/reference/" + refPayco.trim(), null);
+        System.out.println("[EpaycoService] consultarEstadoPorReferencia raw response for ref_payco=" + refPayco + ": " + response);
+
+        String estado = EpaycoEstadoParser.extraerEstado(response);
+        if (estado == null || estado.isBlank()) {
+            estado = "PENDIENTE";
+        }
+
+        return new EpaycoStatusResult(estado, refPayco.trim());
+    }
+
     private String extractRefPayco(String response) {
         if (response == null || response.isBlank()) return null;
         try {
@@ -132,13 +152,13 @@ public class EpaycoService {
             if (m.find()) return m.group(1);
             // Si no hay dígitos, descartamos para no tomar descripciones por error
             return null;
-        } catch (Exception e) {
+        } catch (java.io.IOException e) {
             // si no es JSON, intentar buscar patrones numéricos comunes en el HTML/texto
             try {
                 java.util.regex.Pattern p = java.util.regex.Pattern.compile("(Referencia ePayco|Referencia|Recibo|ref_payco|refPayco|ref)[^0-9]{0,10}([0-9]{5,12})", java.util.regex.Pattern.CASE_INSENSITIVE);
                 java.util.regex.Matcher m = p.matcher(response);
                 if (m.find()) return m.group(2);
-            } catch (Exception ex) {
+            } catch (RuntimeException ex) {
                 // ignore
             }
             return null;

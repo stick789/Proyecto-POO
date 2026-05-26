@@ -156,6 +156,13 @@ INSERT INTO `persona` (`id_persona`, `nombre`, `email`, `tipodocumento`, `numdoc
 (5, 'Sofia Gomez', 'sofia.gomez@test.com', 'CC', '55555555'),
 (6, 'Carlos Mejia', 'carlos.mejia@test.com', 'CC', '66666666');
 
+-- Usuarios Afiliados para pruebas de categorías y descuentos
+INSERT INTO `persona` (`id_persona`, `nombre`, `email`, `tipodocumento`, `numdocumento`) VALUES
+(14, 'Estudiante Ejemplo', 'estudiante@test.com', 'CC', '77777777'),
+(15, 'Usuario Categoria A', 'userA@test.com', 'CC', '88888888'),
+(16, 'Usuario Categoria B', 'userB@test.com', 'CC', '99999999'),
+(17, 'Usuario Categoria C', 'userC@test.com', 'CC', '10101010');
+
 -- --------------------------------------------------------
 
 --
@@ -257,7 +264,7 @@ CREATE TABLE `usuarios` (
   `idusuario` int(11) NOT NULL,
   `id_persona` int(11) NOT NULL,
   `contraseña` varchar(255) NOT NULL,
-  `categoria` varchar(1) DEFAULT NULL,
+  `categoria` varchar(20) DEFAULT NULL,
   `esAfiliado` tinyint(1) NOT NULL,
   `id_rol` int(11) NOT NULL DEFAULT 1
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -272,7 +279,11 @@ INSERT INTO `usuarios` (`idusuario`, `id_persona`, `contraseña`, `categoria`, `
 (3, 3, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3),
 (4, 4, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3),
 (5, 5, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3),
-(6, 6, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3);
+(6, 6, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3),
+(7, 14, '3d51f01097ec46b8865ba32216bacdd1a3d92b2f973ee5534dbe8a26e94d7a1a', 'ESTUDIANTE', 1, 1),
+(8, 15, 'b4baf845ad1e7e0db239bd3c04c4f4c7d0e916ddddc00c61046b98458d2311a9', 'A', 1, 1),
+(9, 16, '8af1c59451d40e73210c174b9e204127eea37d7c9bd9bf60dda2b4459c2fbb9c', 'B', 1, 1),
+(10, 17, '1e75c344369dad096206327423b129366d8a64210c0afc26518891cce099dbb5', 'C', 1, 1);
 
 --
 -- Índices para tablas volcadas
