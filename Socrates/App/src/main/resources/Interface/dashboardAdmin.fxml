@@ -1,201 +1,198 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.layout.BorderPane?>
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.control.Label?>
-<?import javafx.scene.control.Button?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.control.TableView?>
-<?import javafx.scene.control.TableColumn?>
-<?import javafx.scene.control.ScrollPane?>
-<?import javafx.geometry.Insets?>
 
-<BorderPane prefWidth="1280" prefHeight="800"
-            xmlns="http://javafx.com/javafx/21"
-            xmlns:fx="http://javafx.com/fxml/1"
-            fx:controller="socratesGui.Dashboardadmincontroller">
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane prefHeight="800" prefWidth="1280" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="socratesGui.Dashboardadmincontroller">
 
     <!-- ═══════════════════ LEFT SIDEBAR ═══════════════════ -->
     <left>
         <VBox prefWidth="210" style="-fx-background-color: #E85D04;">
-            <Label text="SÓCRATES"
-                   style="-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: white; -fx-padding: 20;"/>
+            <Label style="-fx-font-size: 20; -fx-font-weight: bold; -fx-text-fill: white; -fx-padding: 20;-fx-cursor: hand;" onMouseClicked="#onInicio">
+            <graphic>
+               <ImageView fitHeight="34.0" fitWidth="168.0">
+                  <image>
+                     <Image url="@socrates_logo_compacto.png" />
+                  </image>
+               </ImageView>
+            </graphic></Label>
             <VBox>
-                <padding><Insets top="0" right="20" bottom="20" left="20"/></padding>
-                <Label fx:id="lblNombreAdmin" style="-fx-text-fill: white; -fx-font-size: 14;"/>
+                <padding><Insets bottom="20" left="20" right="20" top="0" /></padding>
+                <Label fx:id="lblNombreAdmin" style="-fx-text-fill: white; -fx-font-size: 14;" />
             </VBox>
             <VBox spacing="5">
-                <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
-                <Button fx:id="btnNavInicio"        onAction="#onInicio"        text="🏠  Inicio"        prefWidth="190" alignment="CENTER_LEFT" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
-                <Button fx:id="btnNavUsuarios"      onAction="#onUsuarios"      text="👥  Usuarios"      prefWidth="190" alignment="CENTER_LEFT" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
-                <Button fx:id="btnNavTurnos"        onAction="#onTurnos"        text="📅  Turnos"        prefWidth="190" alignment="CENTER_LEFT" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
-                <Button fx:id="btnNavInstalaciones" onAction="#onInstalaciones" text="🏟  Instalaciones"  prefWidth="190" alignment="CENTER_LEFT" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
-                <Button fx:id="btnNavPagos"         onAction="#onPagos"         text="💳  Pagos"          prefWidth="190" alignment="CENTER_LEFT" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
-                <Button fx:id="btnNavEntrenadores"  onAction="#onEntrenadores"  text="🏋  Entrenadores"  prefWidth="190" alignment="CENTER_LEFT" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
-                <Button fx:id="btnNavSedes"         onAction="#onSedes"         text="📍  Sedes"          prefWidth="190" alignment="CENTER_LEFT" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;"/>
+                <padding><Insets bottom="10" left="10" right="10" top="10" /></padding>
+                <Button fx:id="btnNavInicio" alignment="CENTER_LEFT" onAction="#onInicio" prefWidth="190" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;" text="🏠  Inicio" />
+                <Button fx:id="btnNavUsuarios" alignment="CENTER_LEFT" onAction="#onUsuarios" prefWidth="190" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;" text="👥  Usuarios" />
+                <Button fx:id="btnNavTurnos" alignment="CENTER_LEFT" onAction="#onTurnos" prefWidth="190" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;" text="📅  Turnos" />
+                <Button fx:id="btnNavInstalaciones" alignment="CENTER_LEFT" onAction="#onInstalaciones" prefWidth="190" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;" text="🏟  Instalaciones" />
+                <Button fx:id="btnNavPagos" alignment="CENTER_LEFT" onAction="#onPagos" prefWidth="190" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;" text="💳  Pagos" />
+                <Button fx:id="btnNavEntrenadores" alignment="CENTER_LEFT" onAction="#onEntrenadores" prefWidth="190" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;" text="🏋  Entrenadores" />
+                <Button fx:id="btnNavSedes" alignment="CENTER_LEFT" onAction="#onSedes" prefWidth="190" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 13; -fx-padding: 12 20; -fx-cursor: hand;" text="📍  Sedes" />
             </VBox>
-            <VBox VBox.vgrow="ALWAYS"/>
-            <Button fx:id="btnLogout" onAction="#onLogout" text="Cerrar Sesión" prefWidth="190"
-                    style="-fx-background-color: #C44D03; -fx-text-fill: white; -fx-padding: 12 20; -fx-cursor: hand;">
-                <VBox.margin><Insets bottom="20" left="10" right="10"/></VBox.margin>
+            <VBox VBox.vgrow="ALWAYS" />
+            <Button fx:id="btnLogout" onAction="#onLogout" prefWidth="190" style="-fx-background-color: #C44D03; -fx-text-fill: white; -fx-padding: 12 20; -fx-cursor: hand;" text="Cerrar Sesión">
+                <VBox.margin><Insets bottom="20" left="10" right="10" /></VBox.margin>
             </Button>
         </VBox>
     </left>
 
     <!-- ═══════════════════ CENTER CONTENT ═══════════════════ -->
     <center>
-        <VBox style="-fx-background-color: #FFF8F0;" spacing="16">
-            <padding><Insets top="20" right="20" bottom="20" left="20"/></padding>
+        <VBox spacing="16" style="-fx-background-color: #FFF8F0;">
+            <padding><Insets bottom="20" left="20" right="20" top="20" /></padding>
             <!-- Header -->
             <HBox alignment="CENTER_LEFT">
-                <Label fx:id="lblSeccion" text="Inicio" style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #E85D04;"/>
-                <HBox HBox.hgrow="ALWAYS"/>
-                <Label fx:id="lblFecha" style="-fx-font-size: 12; -fx-text-fill: gray;"/>
+                <Label fx:id="lblSeccion" style="-fx-font-size: 24; -fx-font-weight: bold; -fx-text-fill: #E85D04;" text="Inicio" />
+                <HBox HBox.hgrow="ALWAYS" />
+                <Label fx:id="lblFecha" style="-fx-font-size: 12; -fx-text-fill: gray;" />
             </HBox>
 
-            <ScrollPane VBox.vgrow="ALWAYS" fitToWidth="true"
-                        style="-fx-background: transparent; -fx-background-color: transparent;">
+            <ScrollPane fitToWidth="true" style="-fx-background: transparent; -fx-background-color: transparent;" VBox.vgrow="ALWAYS">
                 <VBox spacing="16">
-                    <padding><Insets top="4" right="4" bottom="4" left="4"/></padding>
+                    <padding><Insets bottom="4" left="4" right="4" top="4" /></padding>
 
                     <!-- ══════════════ PANEL INICIO ══════════════ -->
-                    <VBox fx:id="panelInicio" visible="true" managed="true" spacing="20">
+                    <VBox fx:id="panelInicio" managed="true" spacing="20" visible="true">
                         <!-- Estadísticas Fila 1 -->
                         <HBox spacing="16">
-                            <VBox spacing="5" alignment="CENTER" HBox.hgrow="ALWAYS"
-                                  style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;">
-                                <Label text="Usuarios Activos" style="-fx-font-size: 13; -fx-text-fill: gray;"/>
-                                <Label fx:id="lblTotalUsuarios" text="—" style="-fx-font-size: 32; -fx-font-weight: bold; -fx-text-fill: #E85D04;"/>
+                            <VBox alignment="CENTER" spacing="5" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;" HBox.hgrow="ALWAYS">
+                                <Label style="-fx-font-size: 13; -fx-text-fill: gray;" text="Usuarios Activos" />
+                                <Label fx:id="lblTotalUsuarios" style="-fx-font-size: 32; -fx-font-weight: bold; -fx-text-fill: #E85D04;" text="—" />
                             </VBox>
-                            <VBox spacing="5" alignment="CENTER" HBox.hgrow="ALWAYS"
-                                  style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;">
-                                <Label text="Turnos Hoy" style="-fx-font-size: 13; -fx-text-fill: gray;"/>
-                                <Label fx:id="lblTotalTurnos" text="—" style="-fx-font-size: 32; -fx-font-weight: bold; -fx-text-fill: #C44D03;"/>
+                            <VBox alignment="CENTER" spacing="5" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;" HBox.hgrow="ALWAYS">
+                                <Label style="-fx-font-size: 13; -fx-text-fill: gray;" text="Turnos Hoy" />
+                                <Label fx:id="lblTotalTurnos" style="-fx-font-size: 32; -fx-font-weight: bold; -fx-text-fill: #C44D03;" text="—" />
                             </VBox>
-                            <VBox spacing="5" alignment="CENTER" HBox.hgrow="ALWAYS"
-                                  style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;">
-                                <Label text="Turnos Futuros Activos" style="-fx-font-size: 13; -fx-text-fill: gray;"/>
-                                <Label fx:id="lblTurnosActivos" text="—" style="-fx-font-size: 32; -fx-font-weight: bold; -fx-text-fill: #FF8C00;"/>
+                            <VBox alignment="CENTER" spacing="5" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;" HBox.hgrow="ALWAYS">
+                                <Label style="-fx-font-size: 13; -fx-text-fill: gray;" text="Turnos Futuros Activos" />
+                                <Label fx:id="lblTurnosActivos" style="-fx-font-size: 32; -fx-font-weight: bold; -fx-text-fill: #FF8C00;" text="—" />
                             </VBox>
-                            <VBox spacing="5" alignment="CENTER" HBox.hgrow="ALWAYS"
-                                  style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;">
-                                <Label text="Entrenadores" style="-fx-font-size: 13; -fx-text-fill: gray;"/>
-                                <Label fx:id="lblTotalEntrenadores" text="—" style="-fx-font-size: 32; -fx-font-weight: bold; -fx-text-fill: #E85D04;"/>
+                            <VBox alignment="CENTER" spacing="5" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;" HBox.hgrow="ALWAYS">
+                                <Label style="-fx-font-size: 13; -fx-text-fill: gray;" text="Entrenadores" />
+                                <Label fx:id="lblTotalEntrenadores" style="-fx-font-size: 32; -fx-font-weight: bold; -fx-text-fill: #E85D04;" text="—" />
                             </VBox>
                         </HBox>
                         <!-- Estadísticas Fila 2 -->
                         <HBox spacing="16">
-                            <VBox spacing="5" alignment="CENTER" HBox.hgrow="ALWAYS"
-                                  style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;">
-                                <Label text="Cancelaciones (30 días)" style="-fx-font-size: 13; -fx-text-fill: gray;"/>
-                                <Label fx:id="lblCancelacionesMes" text="—" style="-fx-font-size: 32; -fx-font-weight: bold; -fx-text-fill: #C44D03;"/>
+                            <VBox alignment="CENTER" spacing="5" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;" HBox.hgrow="ALWAYS">
+                                <Label style="-fx-font-size: 13; -fx-text-fill: gray;" text="Cancelaciones (30 días)" />
+                                <Label fx:id="lblCancelacionesMes" style="-fx-font-size: 32; -fx-font-weight: bold; -fx-text-fill: #C44D03;" text="—" />
                             </VBox>
-                            <VBox spacing="5" alignment="CENTER" HBox.hgrow="ALWAYS"
-                                  style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;">
-                                <Label text="Ingresos (30 días)" style="-fx-font-size: 13; -fx-text-fill: gray;"/>
-                                <Label fx:id="lblIngresosMes" text="—" style="-fx-font-size: 26; -fx-font-weight: bold; -fx-text-fill: #C44D03;"/>
+                            <VBox alignment="CENTER" spacing="5" style="-fx-background-color: white; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian,rgba(0,0,0,0.1),8,0,0,2); -fx-padding: 20;" HBox.hgrow="ALWAYS">
+                                <Label style="-fx-font-size: 13; -fx-text-fill: gray;" text="Ingresos (30 días)" />
+                                <Label fx:id="lblIngresosMes" style="-fx-font-size: 26; -fx-font-weight: bold; -fx-text-fill: #C44D03;" text="—" />
                             </VBox>
                         </HBox>
                     </VBox>
 
                     <!-- ══════════════ PANEL USUARIOS ══════════════ -->
-                    <VBox fx:id="panelUsuarios" visible="false" managed="false" spacing="10">
-                        <HBox spacing="10" alignment="CENTER_LEFT">
-                            <Label text="Usuarios" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
-                            <HBox HBox.hgrow="ALWAYS"/>
-                            <TextField fx:id="txtBuscarUsuario" promptText="🔍 Buscar por nombre..." prefWidth="250"
-                                       style="-fx-background-radius: 6; -fx-padding: 6 10;"/>
+                    <VBox fx:id="panelUsuarios" managed="false" spacing="10" visible="false">
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label style="-fx-font-size: 18; -fx-font-weight: bold;" text="Usuarios" />
+                            <HBox HBox.hgrow="ALWAYS" />
+                            <TextField fx:id="txtBuscarUsuario" prefWidth="250" promptText="🔍 Buscar por nombre..." style="-fx-background-radius: 6; -fx-padding: 6 10;" />
                         </HBox>
-                        <Label fx:id="lblMsgUsuarios" style="-fx-text-fill: gray; -fx-font-size: 11;"/>
+                        <Label fx:id="lblMsgUsuarios" style="-fx-text-fill: gray; -fx-font-size: 11;" />
                         <TableView fx:id="tablaUsuarios" prefHeight="420">
                             <columns>
-                                <TableColumn fx:id="colUsuarioId"        text="ID"         prefWidth="50"/>
-                                <TableColumn fx:id="colUsuarioNombre"    text="Nombre"     prefWidth="160"/>
-                                <TableColumn fx:id="colUsuarioEmail"     text="Email"      prefWidth="180"/>
-                                <TableColumn fx:id="colUsuarioDocumento" text="Documento"  prefWidth="110"/>                                <TableColumn fx:id="colUsuarioEstado"    text="Estado"     prefWidth="80"/>
-                                <TableColumn fx:id="colUsuarioAcciones"  text="Acciones"   prefWidth="220"/>
+                                <TableColumn fx:id="colUsuarioId" prefWidth="50" text="ID" />
+                                <TableColumn fx:id="colUsuarioNombre" prefWidth="160" text="Nombre" />
+                                <TableColumn fx:id="colUsuarioEmail" prefWidth="180" text="Email" />
+                                <TableColumn fx:id="colUsuarioDocumento" prefWidth="110" text="Documento" />                                <TableColumn fx:id="colUsuarioEstado" prefWidth="80" text="Estado" />
+                                <TableColumn fx:id="colUsuarioAcciones" prefWidth="220" text="Acciones" />
                             </columns>
                         </TableView>
                     </VBox>
 
                     <!-- ══════════════ PANEL TURNOS ══════════════ -->
-                    <VBox fx:id="panelTurnos" visible="false" managed="false" spacing="10">
-                        <Label text="Turnos — Todos" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
-                        <Label fx:id="lblMsgTurnos" style="-fx-text-fill: gray; -fx-font-size: 11;"/>
+                    <VBox fx:id="panelTurnos" managed="false" spacing="10" visible="false">
+                        <Label style="-fx-font-size: 18; -fx-font-weight: bold;" text="Turnos — Todos" />
+                        <Label fx:id="lblMsgTurnos" style="-fx-text-fill: gray; -fx-font-size: 11;" />
                         <TableView fx:id="tablaTurnos" prefHeight="420">
                             <columns>
-                                <TableColumn fx:id="colTurnoId"          text="ID"           prefWidth="50"/>
-                                <TableColumn fx:id="colTurnoFecha"       text="Fecha / Hora" prefWidth="140"/>
-                                <TableColumn fx:id="colTurnoDuracion"    text="Duración"     prefWidth="80"/>
-                                <TableColumn fx:id="colTurnoInstalacion" text="Instalación"  prefWidth="110"/>
-                                <TableColumn fx:id="colTurnoCapacidad"   text="Capacidad"    prefWidth="80"/>
-                                <TableColumn fx:id="colTurnoEstado"      text="Estado"       prefWidth="90"/>
-                                <TableColumn fx:id="colTurnoUsuario"     text="Usuario"      prefWidth="140"/>
-                                <TableColumn fx:id="colTurnoAcciones"    text="Acción"       prefWidth="90"/>
+                                <TableColumn fx:id="colTurnoId" prefWidth="50" text="ID" />
+                                <TableColumn fx:id="colTurnoFecha" prefWidth="140" text="Fecha / Hora" />
+                                <TableColumn fx:id="colTurnoDuracion" prefWidth="80" text="Duración" />
+                                <TableColumn fx:id="colTurnoInstalacion" prefWidth="110" text="Instalación" />
+                                <TableColumn fx:id="colTurnoCapacidad" prefWidth="80" text="Capacidad" />
+                                <TableColumn fx:id="colTurnoEstado" prefWidth="90" text="Estado" />
+                                <TableColumn fx:id="colTurnoUsuario" prefWidth="140" text="Usuario" />
+                                <TableColumn fx:id="colTurnoAcciones" prefWidth="90" text="Acción" />
                             </columns>
                         </TableView>
                     </VBox>
 
                     <!-- ══════════════ PANEL INSTALACIONES ══════════════ -->
-                    <VBox fx:id="panelInstalaciones" visible="false" managed="false" spacing="10">
-                        <Label text="Instalaciones" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
-                        <Label fx:id="lblMsgInstalaciones" style="-fx-text-fill: gray; -fx-font-size: 11;"/>
+                    <VBox fx:id="panelInstalaciones" managed="false" spacing="10" visible="false">
+                        <Label style="-fx-font-size: 18; -fx-font-weight: bold;" text="Instalaciones" />
+                        <Label fx:id="lblMsgInstalaciones" style="-fx-text-fill: gray; -fx-font-size: 11;" />
                         <TableView fx:id="tablaInstalaciones" prefHeight="360">
                             <columns>
-                                <TableColumn fx:id="colInstalacionId"       text="ID"         prefWidth="50"/>
-                                <TableColumn fx:id="colInstalacionNombre"   text="Nombre"     prefWidth="130"/>
-                                <TableColumn fx:id="colInstalacionTipo"     text="Tipo"       prefWidth="100"/>
-                                <TableColumn fx:id="colInstalacionCapacidad" text="Capacidad" prefWidth="90"/>
-                                <TableColumn fx:id="colInstalacionAforo"    text="Disponible" prefWidth="90"/>
-                                <TableColumn fx:id="colInstalacionEstado"   text="Estado"     prefWidth="90"/>
-                                <TableColumn fx:id="colInstalacionAcciones" text="Acciones"   prefWidth="160"/>
+                                <TableColumn fx:id="colInstalacionId" prefWidth="50" text="ID" />
+                                <TableColumn fx:id="colInstalacionNombre" prefWidth="130" text="Nombre" />
+                                <TableColumn fx:id="colInstalacionTipo" prefWidth="100" text="Tipo" />
+                                <TableColumn fx:id="colInstalacionCapacidad" prefWidth="90" text="Capacidad" />
+                                <TableColumn fx:id="colInstalacionAforo" prefWidth="90" text="Disponible" />
+                                <TableColumn fx:id="colInstalacionEstado" prefWidth="90" text="Estado" />
+                                <TableColumn fx:id="colInstalacionAcciones" prefWidth="160" text="Acciones" />
                             </columns>
                         </TableView>
                     </VBox>
 
                     <!-- ══════════════ PANEL PAGOS ══════════════ -->
-                    <VBox fx:id="panelPagos" visible="false" managed="false" spacing="10">
-                        <Label text="Pagos — Todos" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
-                        <Label fx:id="lblMsgPagos" style="-fx-text-fill: gray; -fx-font-size: 11;"/>
+                    <VBox fx:id="panelPagos" managed="false" spacing="10" visible="false">
+                        <Label style="-fx-font-size: 18; -fx-font-weight: bold;" text="Pagos — Todos" />
+                        <Label fx:id="lblMsgPagos" style="-fx-text-fill: gray; -fx-font-size: 11;" />
                         <TableView fx:id="tablaPagos" prefHeight="400">
                             <columns>
-                                <TableColumn fx:id="colPagoId"      text="ID"      prefWidth="60"/>
-                                <TableColumn fx:id="colPagoTurno"   text="Turno"   prefWidth="70"/>
-                                <TableColumn fx:id="colPagoUsuario" text="Usuario" prefWidth="80"/>
-                                <TableColumn fx:id="colPagoMonto"   text="Monto"   prefWidth="110"/>
-                                <TableColumn fx:id="colPagoMetodo"  text="Método"  prefWidth="110"/>
-                                <TableColumn fx:id="colPagoEstado"  text="Estado"  prefWidth="100"/>
-                                <TableColumn fx:id="colPagoFecha"   text="Fecha"   prefWidth="150"/>
+                                <TableColumn fx:id="colPagoId" prefWidth="60" text="ID" />
+                                <TableColumn fx:id="colPagoTurno" prefWidth="70" text="Turno" />
+                                <TableColumn fx:id="colPagoUsuario" prefWidth="80" text="Usuario" />
+                                <TableColumn fx:id="colPagoMonto" prefWidth="110" text="Monto" />
+                                <TableColumn fx:id="colPagoMetodo" prefWidth="110" text="Método" />
+                                <TableColumn fx:id="colPagoEstado" prefWidth="100" text="Estado" />
+                                <TableColumn fx:id="colPagoFecha" prefWidth="150" text="Fecha" />
                             </columns>
                         </TableView>
                     </VBox>
 
                     <!-- ══════════════ PANEL ENTRENADORES ══════════════ -->
-                    <VBox fx:id="panelEntrenadores" visible="false" managed="false" spacing="10">
-                        <Label text="Entrenadores" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
-                        <Label fx:id="lblMsgEntrenadores" style="-fx-text-fill: gray; -fx-font-size: 11;"/>
+                    <VBox fx:id="panelEntrenadores" managed="false" spacing="10" visible="false">
+                        <Label style="-fx-font-size: 18; -fx-font-weight: bold;" text="Entrenadores" />
+                        <Label fx:id="lblMsgEntrenadores" style="-fx-text-fill: gray; -fx-font-size: 11;" />
                         <TableView fx:id="tablaEntrenadores" prefHeight="380">
                             <columns>
-                                <TableColumn fx:id="colEntrenadorId"           text="ID"           prefWidth="60"/>
-                                <TableColumn fx:id="colEntrenadorNombre"       text="Nombre"       prefWidth="180"/>
-                                <TableColumn fx:id="colEntrenadorEspecialidad" text="Especialidad" prefWidth="150"/>
-                                <TableColumn fx:id="colEntrenadorEmail"        text="Email"        prefWidth="200"/>
+                                <TableColumn fx:id="colEntrenadorId" prefWidth="60" text="ID" />
+                                <TableColumn fx:id="colEntrenadorNombre" prefWidth="180" text="Nombre" />
+                                <TableColumn fx:id="colEntrenadorEspecialidad" prefWidth="150" text="Especialidad" />
+                                <TableColumn fx:id="colEntrenadorEmail" prefWidth="200" text="Email" />
                             </columns>
                         </TableView>
                     </VBox>
 
                     <!-- ══════════════ PANEL SEDES ══════════════ -->
-                    <VBox fx:id="panelSedes" visible="false" managed="false" spacing="10">
-                        <Label text="Sedes" style="-fx-font-size: 18; -fx-font-weight: bold;"/>
-                        <Label fx:id="lblMsgSedes" style="-fx-text-fill: gray; -fx-font-size: 11;"/>
+                    <VBox fx:id="panelSedes" managed="false" spacing="10" visible="false">
+                        <Label style="-fx-font-size: 18; -fx-font-weight: bold;" text="Sedes" />
+                        <Label fx:id="lblMsgSedes" style="-fx-text-fill: gray; -fx-font-size: 11;" />
                         <TableView fx:id="tablaSedesAdmin" prefHeight="380">
                             <columns>
-                                <TableColumn fx:id="colSedeId"        text="ID"         prefWidth="60"/>
-                                <TableColumn fx:id="colSedeNombre"    text="Nombre"     prefWidth="160"/>
-                                <TableColumn fx:id="colSedeDireccion" text="Dirección"  prefWidth="200"/>
-                                <TableColumn fx:id="colSedeTelefono"  text="Teléfono"   prefWidth="120"/>
-                                <TableColumn fx:id="colSedeEmail"     text="Email"      prefWidth="180"/>
-                                <TableColumn fx:id="colSedeAcciones"  text="Acciones"   prefWidth="90"/>
+                                <TableColumn fx:id="colSedeId" prefWidth="60" text="ID" />
+                                <TableColumn fx:id="colSedeNombre" prefWidth="160" text="Nombre" />
+                                <TableColumn fx:id="colSedeDireccion" prefWidth="200" text="Dirección" />
+                                <TableColumn fx:id="colSedeTelefono" prefWidth="120" text="Teléfono" />
+                                <TableColumn fx:id="colSedeEmail" prefWidth="180" text="Email" />
+                                <TableColumn fx:id="colSedeAcciones" prefWidth="90" text="Acciones" />
                             </columns>
                         </TableView>
                     </VBox>

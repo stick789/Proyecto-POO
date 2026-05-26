@@ -24,6 +24,9 @@ import javafx.stage.Stage;
  *   secondary        → acceso Compensar (640 × 730, no redimensionable)
  *   dashboardAdmin   → panel administrador (1280 × 800, redimensionable)
  *   dashboardUsuario → panel usuario       (1280 × 800, redimensionable)
+ *   parsarellaPagos → pantalla de pagos   (640 × 730, no redimensionable)
+ *   registro         → pantalla de registro (640 × 730, no redimensionable)
+ *   registroExitoso 
  */
 public class App extends Application {
 
