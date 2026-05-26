@@ -523,19 +523,6 @@ public class Dashboardusuariocontroller implements Initializable {
     }
 
     /**
-     * Devuelve el idSede del usuario logueado.
-     * Si la entidad Usuario/Persona no expone aún ese dato, retorna 1 (sede CUR)
-     * como valor por defecto temporal.
-     * todo: guardar idSede en SesionActual cuando se enriquezca el login.
-     */
-    private int obtenerIdSedeUsuario() {
-        // Si en el futuro SesionActual expone getSede(), usar:
-        // Sede s = SesionActual.getSede();
-        // return (s != null) ? s.getIdSede() : 1;
-        return 1;
-    }
-
-    /**
      * Muestra el panel de selección de entrenador con animación.
      */
     private void mostrarPanelEntrenador() {
