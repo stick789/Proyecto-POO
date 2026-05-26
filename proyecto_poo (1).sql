@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 24-05-2026 a las 07:48:59
+-- Tiempo de generación: 26-05-2026 a las 03:28:02
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -86,6 +86,15 @@ CREATE TABLE `historial_citas` (
   `detalle` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Volcado de datos para la tabla `historial_citas`
+--
+
+INSERT INTO `historial_citas` (`idHistorial`, `id_turno`, `id_usuario`, `id_instalacion`, `estado`, `fecha_evento`, `detalle`) VALUES
+(1, 2, 2, 3, 'RESERVADO', '2026-05-25 20:18:39', 'Turno reservado.'),
+(2, 3, 2, 3, 'RESERVADO', '2026-05-25 20:19:59', 'Turno reservado.'),
+(3, 4, 2, 3, 'RESERVADO', '2026-05-25 20:25:59', 'Turno reservado.');
+
 -- --------------------------------------------------------
 
 --
@@ -107,7 +116,8 @@ CREATE TABLE `instalacion` (
 
 INSERT INTO `instalacion` (`idInstalacion`, `tipo`, `capacidadMaxima`, `aforoActual`, `nombre`, `idSede`) VALUES
 (2, 'PISCINA', 20, 20, 'Piscina CUR', 1),
-(3, 'GIMNASIO', 30, 30, 'Gimnasio CUR', 1);
+(3, 'GIMNASIO', 30, 27, 'Gimnasio CUR', 1),
+(5, 'Piscina', 30, 0, 'Piscina Olímpica CUR', 2);
 
 -- --------------------------------------------------------
 
@@ -119,16 +129,21 @@ CREATE TABLE `pagos` (
   `idPago` int(11) NOT NULL,
   `monto` decimal(15,4) DEFAULT NULL,
   `metodoPago` varchar(30) DEFAULT NULL,
-  `estadoPago` varchar(30) DEFAULT NULL
+  `estadoPago` varchar(30) DEFAULT NULL,
+  `id_turno` int(11) DEFAULT NULL,
+  `id_usuario` int(11) DEFAULT NULL,
+  `fechaPago` datetime DEFAULT current_timestamp(),
+  `epayco_session_id` varchar(120) DEFAULT NULL,
+  `epayco_ref_payco` varchar(120) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- ALTERS para compatibilidad con la versión actual del código
--- Agregar columnas faltantes si la tabla fue creada por una versión antigua
-ALTER TABLE `pagos` ADD COLUMN IF NOT EXISTS `id_turno` INT NULL;
-ALTER TABLE `pagos` ADD COLUMN IF NOT EXISTS `id_usuario` INT NULL;
-ALTER TABLE `pagos` ADD COLUMN IF NOT EXISTS `fechaPago` DATETIME NULL DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE `pagos` ADD COLUMN IF NOT EXISTS `epayco_session_id` VARCHAR(120) NULL;
-ALTER TABLE `pagos` ADD COLUMN IF NOT EXISTS `epayco_ref_payco` VARCHAR(120) NULL;
+--
+-- Volcado de datos para la tabla `pagos`
+--
+
+INSERT INTO `pagos` (`idPago`, `monto`, `metodoPago`, `estadoPago`, `id_turno`, `id_usuario`, `fechaPago`, `epayco_session_id`, `epayco_ref_payco`) VALUES
+(1, 50000.0000, 'TARJETA', 'PAGADO', NULL, NULL, '2026-05-25 20:24:26', NULL, NULL),
+(2, 15000.0000, 'TARJETA_ONLINE', 'PENDIENTE', 4, 2, '2026-05-25 20:26:00', '6a14f6a860f857ef9a5b3360', NULL);
 
 -- --------------------------------------------------------
 
@@ -155,13 +170,6 @@ INSERT INTO `persona` (`id_persona`, `nombre`, `email`, `tipodocumento`, `numdoc
 (4, 'Andres Rojas', 'andres.rojas@test.com', 'CC', '44444444'),
 (5, 'Sofia Gomez', 'sofia.gomez@test.com', 'CC', '55555555'),
 (6, 'Carlos Mejia', 'carlos.mejia@test.com', 'CC', '66666666');
-
--- Usuarios Afiliados para pruebas de categorías y descuentos
-INSERT INTO `persona` (`id_persona`, `nombre`, `email`, `tipodocumento`, `numdocumento`) VALUES
-(14, 'Estudiante Ejemplo', 'estudiante@test.com', 'CC', '77777777'),
-(15, 'Usuario Categoria A', 'userA@test.com', 'CC', '88888888'),
-(16, 'Usuario Categoria B', 'userB@test.com', 'CC', '99999999'),
-(17, 'Usuario Categoria C', 'userC@test.com', 'CC', '10101010');
 
 -- --------------------------------------------------------
 
@@ -234,7 +242,8 @@ CREATE TABLE `sede` (
 --
 
 INSERT INTO `sede` (`idSede`, `nombre`, `direccion`, `telefono`, `email`) VALUES
-(1, 'CUR', 'Cra 69 #49a-73, Bogotá', '(601) 3077001', 'pqrs@compensar.com');
+(1, 'CUR', 'Cra 69 #49a-73, Bogotá', '(601) 3077001', 'pqrs@compensar.com'),
+(2, 'Sede Norte CUR', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -249,10 +258,21 @@ CREATE TABLE `turno` (
   `id_usuario` int(11) NOT NULL,
   `id_instalacion` int(11) NOT NULL,
   `id_entrenador` int(11) DEFAULT NULL,
-  `numero_carril_asignado` int(11) DEFAULT NULL,
+  `numero_carril_assigned` int(11) DEFAULT NULL,
   `estado` varchar(20) DEFAULT 'RESERVADO',
-  `idSede` int(11) DEFAULT NULL
+  `idSede` int(11) DEFAULT NULL,
+  `numero_carril_asignado` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `turno`
+--
+
+INSERT INTO `turno` (`idTurno`, `fechaHora`, `duracionMinutos`, `id_usuario`, `id_instalacion`, `id_entrenador`, `numero_carril_assigned`, `estado`, `idSede`, `numero_carril_asignado`) VALUES
+(1, '2026-05-25 08:00:00', 60, 2, 2, NULL, 3, 'RESERVADO', 1, NULL),
+(2, '2026-05-26 08:00:00', 60, 2, 3, NULL, NULL, 'RESERVADO', NULL, NULL),
+(3, '2026-05-26 09:30:00', 60, 2, 3, NULL, NULL, 'RESERVADO', NULL, NULL),
+(4, '2026-05-26 06:00:00', 60, 2, 3, NULL, NULL, 'RESERVADO', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -279,11 +299,7 @@ INSERT INTO `usuarios` (`idusuario`, `id_persona`, `contraseña`, `categoria`, `
 (3, 3, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3),
 (4, 4, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3),
 (5, 5, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3),
-(6, 6, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3),
-(7, 14, '3d51f01097ec46b8865ba32216bacdd1a3d92b2f973ee5534dbe8a26e94d7a1a', 'ESTUDIANTE', 1, 1),
-(8, 15, 'b4baf845ad1e7e0db239bd3c04c4f4c7d0e916ddddc00c61046b98458d2311a9', 'A', 1, 1),
-(9, 16, '8af1c59451d40e73210c174b9e204127eea37d7c9bd9bf60dda2b4459c2fbb9c', 'B', 1, 1),
-(10, 17, '1e75c344369dad096206327423b129366d8a64210c0afc26518891cce099dbb5', 'C', 1, 1);
+(6, 6, 'e606e38b0d8c19b24cf0ee3808183162ea7cd63ff7912dbb22b5e803286b4446', NULL, 0, 3);
 
 --
 -- Índices para tablas volcadas
@@ -389,19 +405,19 @@ ALTER TABLE `entrenador`
 -- AUTO_INCREMENT de la tabla `historial_citas`
 --
 ALTER TABLE `historial_citas`
-  MODIFY `idHistorial` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `idHistorial` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT de la tabla `instalacion`
 --
 ALTER TABLE `instalacion`
-  MODIFY `idInstalacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `idInstalacion` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT de la tabla `pagos`
 --
 ALTER TABLE `pagos`
-  MODIFY `idPago` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `idPago` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `persona`
@@ -419,13 +435,13 @@ ALTER TABLE `rol`
 -- AUTO_INCREMENT de la tabla `sede`
 --
 ALTER TABLE `sede`
-  MODIFY `idSede` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `idSede` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT de la tabla `turno`
 --
 ALTER TABLE `turno`
-  MODIFY `idTurno` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `idTurno` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT de la tabla `usuarios`
@@ -491,9 +507,6 @@ ALTER TABLE `usuarios`
   ADD CONSTRAINT `fk_usuarios_persona` FOREIGN KEY (`id_persona`) REFERENCES `persona` (`id_persona`) ON DELETE CASCADE,
   ADD CONSTRAINT `fk_usuarios_rol` FOREIGN KEY (`id_rol`) REFERENCES `rol` (`id_rol`);
 COMMIT;
-
-
-
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;

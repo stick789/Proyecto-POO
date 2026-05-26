@@ -34,7 +34,6 @@
 
 ## Pasarela de Pagos 
 
-Clase temporal para lanzar la vista de la pasarela de pagos. Nunca se va a poder completar un pego porque la cuenta no esta habilitada para recibirlos.
 ### 🧪 Datos de Prueba
 
 **Importante**: Estas credenciales son solo para entornos de **pruebas** (sandbox). No utilizar en producción.
@@ -55,82 +54,6 @@ Clase temporal para lanzar la vista de la pasarela de pagos. Nunca se va a poder
 | **Cédula de Ciudadanía**  | 1134568019          |
 | **Cédula de Extranjería** | 786630              |
 
-<details>
-<summary>📄 Ver código completo (PasarelaPagosLauncher.java)</summary>
-
-```java
-package socratesGui;
-
-import java.io.IOException;
-import java.util.Optional;
-
-import dao.EntrenadorDAO;
-import dao.InstalacionDAO;
-import dao.PersonaDAO;
-import dao.TurnoDAO;
-import database.Conexion;
-import entidades.Turno;
-import javafx.application.Application;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
-import javafx.stage.Stage;
-
-/**
- * Launcher temporal para abrir solo la vista de pasarela de pagos.
- */
-public class PasarelaPagosLauncher extends Application {
-
-    @Override
-    public void start(Stage stage) throws IOException {
-        try {
-            Conexion.getInstancia().conectarConFeedback();
-        } catch (RuntimeException e) {
-            throw e;
-        }
-
-        FXMLLoader loader = new FXMLLoader(
-            PasarelaPagosLauncher.class.getResource("/Interface/pasarelaPagos.fxml")
-        );
-
-        Scene scene = new Scene(loader.load(), 700, 550);
-        PasarelaPagosController controller = loader.getController();
-        controller.setHostServices(getHostServices());
-
-        // Cargar turno por parámetro (opcional)
-        String turnoIdParam = System.getProperty("turnoId");
-        if (turnoIdParam == null || turnoIdParam.isBlank()) {
-            turnoIdParam = System.getenv("TURNOID");
-        }
-
-        if (turnoIdParam != null && !turnoIdParam.isBlank()) {
-            try {
-                int turnoId = Integer.parseInt(turnoIdParam.trim());
-                TurnoDAO turnoDAO = new TurnoDAO(new PersonaDAO(), new InstalacionDAO(), new EntrenadorDAO());
-                Optional<Turno> turnoOpt = turnoDAO.buscarPorId(turnoId);
-                
-                if (turnoOpt.isPresent()) {
-                    controller.setTurno(turnoOpt.get());
-                } else {
-                    Turno turno = new Turno();
-                    turno.setIdTurno(turnoId);
-                    controller.setTurno(turno);
-                }
-            } catch (Exception e) {
-                System.err.println("No se pudo cargar el turno: " + e.getMessage());
-            }
-        }
-
-        stage.setTitle("Pasarela ePayco (Prueba)");
-        stage.setResizable(false);
-        stage.setScene(scene);
-        stage.show();
-    }
-
-    public static void main(String[] args) {
-        launch(args);
-    }
-```
-</details>
 
 >[!IMPORTANT]
 >Rehacer la base de datos por si acaso llegan a salir errores, se hizo la visual para ambos usuario y admin.
