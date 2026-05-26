@@ -18,8 +18,6 @@ public class Gimnasio extends Instalacion {
 
     @Override
     public String toString() {
-        return "Instalacion: " + getTipo() +
-               " | Capacidad Máxima: " + getCapacidadMaxima() +
-               " | Aforo Actual: " + getAforoActual();
+        return super.toString();
     }
 }

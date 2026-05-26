@@ -34,7 +34,7 @@ public class Piscina extends Instalacion {
 
     @Override
     public String toString() {
-        return "Instalacion: " + getTipo() +
+        return super.toString() +
                " | Carriles: " + numeroCarriles +
                " | Profundidad: " + profundidad + "m";
     }
