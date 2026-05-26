@@ -1,14 +1,14 @@
-<?xml version="1.0" encoding="UTF-8"?>
+﻿<?xml version="1.0" encoding="UTF-8"?>
 
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.DatePicker?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
 <?import javafx.scene.image.Image?>
 <?import javafx.scene.image.ImageView?>
 <?import javafx.scene.layout.BorderPane?>
@@ -51,7 +51,6 @@
                 <Button fx:id="btnNavMisTurnos" alignment="CENTER_LEFT" onAction="#onMisTurnos" prefWidth="194" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 12; -fx-padding: 10 20; -fx-cursor: hand;" text="📅  Mis Turnos" />
                 <Button fx:id="btnNavHistorial" alignment="CENTER_LEFT" onAction="#onHistorial" prefWidth="194" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 12; -fx-padding: 10 20; -fx-cursor: hand;" text="📋  Historial" />
                 <Button fx:id="btnNavMisPagos" alignment="CENTER_LEFT" onAction="#onMisPagos" prefWidth="194" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 12; -fx-padding: 10 20; -fx-cursor: hand;" text="💳  Mis Pagos" />
-                <Button fx:id="btnNavMisFacturas" alignment="CENTER_LEFT" onAction="#onMisFacturas" prefWidth="194" style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 12; -fx-padding: 10 20; -fx-cursor: hand;" text="🧾  Mis Facturas" />
             </VBox>
 
             <!-- Spacer -->
@@ -201,7 +200,11 @@
 
                     <!-- ── PANEL MIS TURNOS ── -->
                     <VBox fx:id="panelTurnos" managed="false" spacing="10" style="-fx-background-color: white; -fx-background-radius: 8;                                  -fx-effect: dropshadow(gaussian,rgba(232,93,4,0.10),6,0,0,2);                                  -fx-padding: 20; -fx-border-color: #FFD6A5; -fx-border-radius: 8;" visible="false">
-                        <Label style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #E85D04;" text="Mis Turnos Activos" />
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #E85D04;" text="Mis Turnos Activos" />
+                            <HBox HBox.hgrow="ALWAYS" />
+                            <TextField fx:id="txtBuscarTurno" prefWidth="230" promptText="🔍 Buscar por ID..." style="-fx-background-radius: 6; -fx-padding: 6 10;" />
+                        </HBox>
                         <TableView fx:id="tablaTurnos" prefHeight="420" VBox.vgrow="ALWAYS">
                             <columns>
                                 <TableColumn fx:id="colTurnoId" prefWidth="50" text="ID" />
@@ -221,7 +224,11 @@
 
                     <!-- ── PANEL HISTORIAL ── -->
                     <VBox fx:id="panelHistorial" managed="false" spacing="10" style="-fx-background-color: white; -fx-background-radius: 8;                                  -fx-effect: dropshadow(gaussian,rgba(232,93,4,0.10),6,0,0,2);                                  -fx-padding: 20; -fx-border-color: #FFD6A5; -fx-border-radius: 8;" visible="false">
-                        <Label style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #E85D04;" text="Historial de Turnos" />
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #E85D04;" text="Historial de Turnos" />
+                            <HBox HBox.hgrow="ALWAYS" />
+                            <TextField fx:id="txtBuscarHistorial" prefWidth="230" promptText="🔍 Buscar por ID..." style="-fx-background-radius: 6; -fx-padding: 6 10;" />
+                        </HBox>
                         <TableView fx:id="tablaHistorial" prefHeight="380" VBox.vgrow="ALWAYS">
                             <columns>
                                 <TableColumn fx:id="colHistId" prefWidth="50" text="ID" />
@@ -236,7 +243,11 @@
 
                     <!-- ── PANEL MIS PAGOS ── -->
                     <VBox fx:id="panelPagos" managed="false" spacing="10" style="-fx-background-color: white; -fx-background-radius: 8;                                  -fx-effect: dropshadow(gaussian,rgba(232,93,4,0.10),6,0,0,2);                                  -fx-padding: 20; -fx-border-color: #FFD6A5; -fx-border-radius: 8;" visible="false">
-                        <Label style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #E85D04;" text="Mis Pagos" />
+                        <HBox spacing="10" alignment="CENTER_LEFT">
+                            <Label style="-fx-font-size: 14; -fx-font-weight: bold; -fx-text-fill: #E85D04;" text="Mis Pagos" />
+                            <HBox HBox.hgrow="ALWAYS" />
+                            <TextField fx:id="txtBuscarPago" prefWidth="230" promptText="🔍 Buscar por ID..." style="-fx-background-radius: 6; -fx-padding: 6 10;" />
+                        </HBox>
                         <TableView fx:id="tablaPagos" prefHeight="420" VBox.vgrow="ALWAYS">
                             <columns>
                                 <TableColumn fx:id="colPagoId" prefWidth="55" text="ID" />
@@ -246,10 +257,7 @@
                                 <TableColumn fx:id="colPagoEstado" prefWidth="120" text="Estado" />
                                 <TableColumn fx:id="colPagoFecha" prefWidth="180" text="Fecha" />
                             </columns>
-                        </TableView>
-                                          <HBox alignment="CENTER_RIGHT" spacing="8" style="-fx-padding: 8 0 0 0;">
-                                                 <MenuButton fx:id="menuFacturas" style="-fx-background-color: #E85D04; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 8 14; -fx-cursor: hand; -fx-background-radius: 6;" text="🧾  Ver Facturas" />
-                                          </HBox>
+                           </TableView>
                         <Label fx:id="lblMsgPagos" style="-fx-text-fill: #C44D03; -fx-font-size: 12;" text="" />
                     </VBox>
 

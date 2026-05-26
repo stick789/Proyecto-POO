@@ -56,6 +56,7 @@ import javafx.scene.control.DatePicker;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -81,7 +82,6 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private Button btnNavMisTurnos;
     @FXML private Button btnNavHistorial;
     @FXML private Button btnNavMisPagos;
-    @FXML private Button btnNavMisFacturas;
     @FXML private Button btnLogout;
 
     // ── Header ────────────────────────────────────────────────────────────────
@@ -136,6 +136,7 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private TableColumn<Turno, String> colTurnoCarril;
     @FXML private Button                     btnCancelarTurno;
     @FXML private Label                      lblMsgTurnos;
+    @FXML private TextField                  txtBuscarTurno;
 
     // ── Tabla Historial ───────────────────────────────────────────────────────
     @FXML private TableView<Turno>           tablaHistorial;
@@ -145,6 +146,7 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private TableColumn<Turno, String> colHistDuracion;
     @FXML private TableColumn<Turno, String> colHistEstado;
     @FXML private Label                      lblMsgHistorial;
+    @FXML private TextField                  txtBuscarHistorial;
 
     // ── Tabla Pagos ───────────────────────────────────────────────────────────
     @FXML private TableView<Pago>            tablaPagos;
@@ -155,7 +157,7 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private TableColumn<Pago, String>  colPagoEstado;
     @FXML private TableColumn<Pago, String>  colPagoFecha;
     @FXML private Label                      lblMsgPagos;
-    @FXML private javafx.scene.control.MenuButton menuFacturas;
+    @FXML private TextField                  txtBuscarPago;
 
     // ── Estado de la selección de turno ──────────────────────────────────────
     private Instalacion instalacionSeleccionada = null;
@@ -219,46 +221,6 @@ public class Dashboardusuariocontroller implements Initializable {
 
             // Cargar inicio
             cargarInicio();
-
-            // Poblar menu de facturas con plantillas JRXML disponibles
-            try {
-                List<String> candidates = Arrays.asList("RPTUsuarios.jrxml", "RPTUsuarios1.jrxml");
-                for (String name : candidates) {
-                    boolean exists = false;
-                    try (InputStream is = findReportStream(name)) { if (is != null) exists = true; }
-                    File f = new File(new File("").getAbsolutePath(), "src/reportes/" + name);
-                    if (!exists && f.exists()) exists = true;
-                    if (exists) {
-                        javafx.scene.control.MenuItem mi = new javafx.scene.control.MenuItem(name.replace(".jrxml", ""));
-                        mi.setOnAction(ev -> {
-                            try {
-                                Pago seleccionado = null;
-                                try { seleccionado = tablaPagos.getSelectionModel().getSelectedItem(); } catch (Exception ignore) {}
-                                if (seleccionado == null) {
-                                    Alert info = new Alert(Alert.AlertType.INFORMATION);
-                                    info.initStyle(StageStyle.UTILITY);
-                                    info.setTitle("Seleccionar pago");
-                                    info.setHeaderText(null);
-                                    info.setContentText("Selecciona un pago en la tabla antes de generar el comprobante.");
-                                    info.showAndWait();
-                                    return;
-                                }
-                                long id = seleccionado.getIdPago();
-                                File pdf = negocio.VentaControl.reporteComprobante(id);
-                                Alert ok = new Alert(Alert.AlertType.INFORMATION);
-                                ok.initStyle(StageStyle.UTILITY);
-                                ok.setTitle("Comprobante generado");
-                                ok.setHeaderText(null);
-                                ok.setContentText("PDF generado: " + pdf.getAbsolutePath());
-                                ok.showAndWait();
-                            } catch (Exception ex) {
-                                mostrarAlerta("Error", "No se pudo generar el comprobante: " + ex.getMessage());
-                            }
-                        });
-                        if (menuFacturas != null) menuFacturas.getItems().add(mi);
-                    }
-                }
-            } catch (Exception ignore) {}
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -386,10 +348,10 @@ public class Dashboardusuariocontroller implements Initializable {
 
     @FXML private void onInicio()       { mostrarPanel(panelInicio,        "Inicio");         cargarInicio(); }
     @FXML private void onAgendarTurno() { mostrarPanel(panelAgendarTurno,  "Agendar Turno");  limpiarFormulario(); }
-    @FXML private void onMisTurnos()    { mostrarPanel(panelTurnos,        "Mis Turnos");     cargarMisTurnos(); }
-    @FXML private void onHistorial()    { mostrarPanel(panelHistorial,      "Historial");      cargarHistorial(); }
-    @FXML private void onMisPagos()     { mostrarPanel(panelPagos,         "Mis Pagos");      cargarMisPagos(); }
-    @FXML private void onMisFacturas()  { generarReporteFacturas(); }
+    @FXML private void onMisTurnos()    { mostrarPanel(panelTurnos,        "Mis Turnos");     if (txtBuscarTurno     != null) txtBuscarTurno.clear();     cargarMisTurnos(); }
+    @FXML private void onHistorial()    { mostrarPanel(panelHistorial,      "Historial");      if (txtBuscarHistorial != null) txtBuscarHistorial.clear(); cargarHistorial(); }
+    @FXML private void onMisPagos()     { mostrarPanel(panelPagos,         "Mis Pagos");      if (txtBuscarPago      != null) txtBuscarPago.clear();      cargarMisPagos(); }
+    @FXML private void onMisFacturas()  { onMisPagos(); }
 
     @FXML private void onLogout() {
         try {
