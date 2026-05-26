@@ -117,6 +117,7 @@ public class Dashboardadmincontroller implements Initializable {
     @FXML private TableColumn<Turno, String>        colTurnoUsuario;
     @FXML private TableColumn<Turno, String>        colTurnoAcciones;
     @FXML private Label                             lblMsgTurnos;
+    @FXML private TextField                         txtBuscarTurno;
 
     // ── Tabla Instalaciones ───────────────────────────────────────────────────
     @FXML private TableView<Instalacion>            tablaInstalaciones;
@@ -139,6 +140,7 @@ public class Dashboardadmincontroller implements Initializable {
     @FXML private TableColumn<Pago, String>         colPagoEstado;
     @FXML private TableColumn<Pago, String>         colPagoFecha;
     @FXML private Label                             lblMsgPagos;
+    @FXML private TextField                         txtBuscarPago;
 
     // ── Tabla Entrenadores ────────────────────────────────────────────────────
     @FXML private TableView<Entrenador>             tablaEntrenadores;
@@ -147,6 +149,7 @@ public class Dashboardadmincontroller implements Initializable {
     @FXML private TableColumn<Entrenador, String>   colEntrenadorEspecialidad;
     @FXML private TableColumn<Entrenador, String>   colEntrenadorEmail;
     @FXML private Label                             lblMsgEntrenadores;
+    @FXML private TextField                         txtBuscarEntrenador;
 
     // ── Tabla Sedes ───────────────────────────────────────────────────────────
     @FXML private TableView<Sede>                   tablaSedesAdmin;
@@ -197,6 +200,15 @@ public class Dashboardadmincontroller implements Initializable {
 
             if (txtBuscarUsuario != null) {
                 txtBuscarUsuario.textProperty().addListener((obs, o, n) -> filtrarUsuarios(n));
+            }
+            if (txtBuscarTurno != null) {
+                txtBuscarTurno.textProperty().addListener((obs, o, n) -> filtrarTurnos(n));
+            }
+            if (txtBuscarPago != null) {
+                txtBuscarPago.textProperty().addListener((obs, o, n) -> filtrarPagos(n));
+            }
+            if (txtBuscarEntrenador != null) {
+                txtBuscarEntrenador.textProperty().addListener((obs, o, n) -> filtrarEntrenadores(n));
             }
 
             cargarInicio();
@@ -306,8 +318,11 @@ public class Dashboardadmincontroller implements Initializable {
         colInstalacionId.setCellValueFactory(c ->
                 new SimpleStringProperty(String.valueOf(c.getValue().getIdInstalacion())));
         if (colInstalacionNombre != null)
-            colInstalacionNombre.setCellValueFactory(c ->
-                    new SimpleStringProperty(safe(c.getValue().getClass().getSimpleName())));
+            colInstalacionNombre.setCellValueFactory(c -> {
+                String nombre = c.getValue().getNombre();
+                return new SimpleStringProperty(
+                    (nombre != null && !nombre.isBlank()) ? nombre : safe(c.getValue().getTipo()));
+            });
         colInstalacionTipo.setCellValueFactory(c ->
                 new SimpleStringProperty(safe(c.getValue().getTipo())));
         colInstalacionCapacidad.setCellValueFactory(c ->
@@ -404,9 +419,9 @@ public class Dashboardadmincontroller implements Initializable {
     // ─────────────────────────────────────────────────────────────────────────
 
     @FXML private void onInicio()        { mostrarPanel(panelInicio,        "Inicio");        cargarInicio(); }
-    @FXML private void onTurnos()        { mostrarPanel(panelTurnos,        "Turnos");        cargarTurnos(); }
+    @FXML private void onTurnos()        { mostrarPanel(panelTurnos,        "Turnos");        if (txtBuscarTurno != null) txtBuscarTurno.clear(); cargarTurnos(); }
     @FXML private void onInstalaciones() { mostrarPanel(panelInstalaciones, "Instalaciones"); cargarInstalaciones(); }
-    @FXML private void onPagos()         { mostrarPanel(panelPagos,         "Pagos");         cargarPagos(); }
+    @FXML private void onPagos()         { mostrarPanel(panelPagos,         "Pagos");         if (txtBuscarPago != null) txtBuscarPago.clear(); cargarPagos(); }
     @FXML private void onSedes()         { mostrarPanel(panelSedes,         "Sedes");         cargarSedes(); }
 
     // FIX: inyectarBotonesSuperAdmin() ahora se llama aquí, donde viven los botones
@@ -419,6 +434,7 @@ public class Dashboardadmincontroller implements Initializable {
     // Entrenadores no necesita inyectar botones — solo navega y carga
     @FXML private void onEntrenadores() {
         mostrarPanel(panelEntrenadores, "Entrenadores");
+        if (txtBuscarEntrenador != null) txtBuscarEntrenador.clear();
         cargarEntrenadores();
     }
 
@@ -704,6 +720,63 @@ public class Dashboardadmincontroller implements Initializable {
                 tablaUsuarios.setItems(FXCollections.observableArrayList(lista != null ? lista : List.of()));
             } catch (Exception e) { /* silencioso */ }
         }
+    }
+
+    private void filtrarTurnos(String texto) {
+        try {
+            List<Turno> todos = adminId > 0
+                    ? new TurnoDAO(new PersonaDAO(), new InstalacionDAO(), new EntrenadorDAO()).listarTodos()
+                    : crearTurnosDemo();
+            if (todos == null) return;
+            String filtro = (texto == null ? "" : texto).trim();
+            if (filtro.isEmpty()) {
+                tablaTurnos.setItems(FXCollections.observableArrayList(todos));
+            } else {
+                List<Turno> filtrados = todos.stream()
+                        .filter(t -> String.valueOf(t.getIdTurno()).contains(filtro))
+                        .collect(java.util.stream.Collectors.toList());
+                tablaTurnos.setItems(FXCollections.observableArrayList(filtrados));
+            }
+        } catch (Exception e) { /* silencioso */ }
+    }
+
+    private void filtrarPagos(String texto) {
+        try {
+            List<Pago> todos = adminId > 0
+                    ? new PagoDAO().listarTodos(200, 1)
+                    : crearPagosDemo();
+            if (todos == null) return;
+            String filtro = (texto == null ? "" : texto).trim();
+            if (filtro.isEmpty()) {
+                tablaPagos.setItems(FXCollections.observableArrayList(todos));
+            } else {
+                List<Pago> filtrados = todos.stream()
+                        .filter(p -> String.valueOf(p.getIdPago()).contains(filtro)
+                                  || String.valueOf(p.getIdTurno()).contains(filtro)
+                                  || String.valueOf(p.getIdUsuario()).contains(filtro))
+                        .collect(java.util.stream.Collectors.toList());
+                tablaPagos.setItems(FXCollections.observableArrayList(filtrados));
+            }
+        } catch (Exception e) { /* silencioso */ }
+    }
+
+    private void filtrarEntrenadores(String texto) {
+        try {
+            List<Entrenador> todos = adminId > 0
+                    ? new EntrenadorDAO().listar("", 200, 1)
+                    : crearEntrenadoresDemo();
+            if (todos == null) return;
+            String filtro = (texto == null ? "" : texto).trim().toLowerCase();
+            if (filtro.isEmpty()) {
+                tablaEntrenadores.setItems(FXCollections.observableArrayList(todos));
+            } else {
+                List<Entrenador> filtrados = todos.stream()
+                        .filter(e -> String.valueOf(e.getId()).contains(filtro)
+                                  || (e.getNombre() != null && e.getNombre().toLowerCase().contains(filtro)))
+                        .collect(java.util.stream.Collectors.toList());
+                tablaEntrenadores.setItems(FXCollections.observableArrayList(filtrados));
+            }
+        } catch (Exception ex) { /* silencioso */ }
     }
 
     private void cargarTurnos() {
