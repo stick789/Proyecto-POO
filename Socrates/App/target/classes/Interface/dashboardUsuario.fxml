@@ -4,6 +4,7 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.Button?>
+<?import javafx.scene.control.MenuButton?>
 <?import javafx.scene.control.TableView?>
 <?import javafx.scene.control.TableColumn?>
 <?import javafx.scene.control.ScrollPane?>
@@ -56,6 +57,9 @@
                         prefWidth="194" alignment="CENTER_LEFT"
                         style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 12; -fx-padding: 10 20; -fx-cursor: hand;"/>
                 <Button fx:id="btnNavMisPagos"     onAction="#onMisPagos"     text="💳  Mis Pagos"
+                        prefWidth="194" alignment="CENTER_LEFT"
+                        style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 12; -fx-padding: 10 20; -fx-cursor: hand;"/>
+                <Button fx:id="btnNavMisFacturas" onAction="#onMisFacturas" text="🧾  Mis Facturas"
                         prefWidth="194" alignment="CENTER_LEFT"
                         style="-fx-background-color: transparent; -fx-text-fill: #FFD6A5; -fx-font-size: 12; -fx-padding: 10 20; -fx-cursor: hand;"/>
             </VBox>
@@ -372,6 +376,10 @@
                                 <TableColumn fx:id="colPagoFecha"  text="Fecha"  prefWidth="180"/>
                             </columns>
                         </TableView>
+                                          <HBox alignment="CENTER_RIGHT" spacing="8" style="-fx-padding: 8 0 0 0;">
+                                                 <MenuButton fx:id="menuFacturas" text="🧾  Ver Facturas"
+                                                                      style="-fx-background-color: #E85D04; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 8 14; -fx-cursor: hand; -fx-background-radius: 6;"/>
+                                          </HBox>
                         <Label fx:id="lblMsgPagos" text=""
                                style="-fx-text-fill: #C44D03; -fx-font-size: 12;"/>
                     </VBox>

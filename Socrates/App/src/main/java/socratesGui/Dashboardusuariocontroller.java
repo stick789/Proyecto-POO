@@ -1,14 +1,18 @@
 package socratesGui;
-
+import java.io.File;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
@@ -22,6 +26,7 @@ import dao.PagoDAO;
 import dao.PersonaDAO;
 import dao.SedeDAO;
 import dao.TurnoDAO;
+import database.Conexion;
 import entidades.Entrenador;
 import entidades.Gimnasio;
 import entidades.Instalacion;
@@ -60,6 +65,11 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
 import negocio.PersonaControl;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.view.JasperViewer;
 
 public class Dashboardusuariocontroller implements Initializable {
 
@@ -71,6 +81,7 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private Button btnNavMisTurnos;
     @FXML private Button btnNavHistorial;
     @FXML private Button btnNavMisPagos;
+    @FXML private Button btnNavMisFacturas;
     @FXML private Button btnLogout;
 
     // ── Header ────────────────────────────────────────────────────────────────
@@ -144,6 +155,7 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private TableColumn<Pago, String>  colPagoEstado;
     @FXML private TableColumn<Pago, String>  colPagoFecha;
     @FXML private Label                      lblMsgPagos;
+    @FXML private javafx.scene.control.MenuButton menuFacturas;
 
     // ── Estado de la selección de turno ──────────────────────────────────────
     private Instalacion instalacionSeleccionada = null;
@@ -207,6 +219,46 @@ public class Dashboardusuariocontroller implements Initializable {
 
             // Cargar inicio
             cargarInicio();
+
+            // Poblar menu de facturas con plantillas JRXML disponibles
+            try {
+                List<String> candidates = Arrays.asList("RPTUsuarios.jrxml", "RPTUsuarios1.jrxml");
+                for (String name : candidates) {
+                    boolean exists = false;
+                    try (InputStream is = findReportStream(name)) { if (is != null) exists = true; }
+                    File f = new File(new File("").getAbsolutePath(), "src/reportes/" + name);
+                    if (!exists && f.exists()) exists = true;
+                    if (exists) {
+                        javafx.scene.control.MenuItem mi = new javafx.scene.control.MenuItem(name.replace(".jrxml", ""));
+                        mi.setOnAction(ev -> {
+                            try {
+                                Pago seleccionado = null;
+                                try { seleccionado = tablaPagos.getSelectionModel().getSelectedItem(); } catch (Exception ignore) {}
+                                if (seleccionado == null) {
+                                    Alert info = new Alert(Alert.AlertType.INFORMATION);
+                                    info.initStyle(StageStyle.UTILITY);
+                                    info.setTitle("Seleccionar pago");
+                                    info.setHeaderText(null);
+                                    info.setContentText("Selecciona un pago en la tabla antes de generar el comprobante.");
+                                    info.showAndWait();
+                                    return;
+                                }
+                                long id = seleccionado.getIdPago();
+                                File pdf = negocio.VentaControl.reporteComprobante(id);
+                                Alert ok = new Alert(Alert.AlertType.INFORMATION);
+                                ok.initStyle(StageStyle.UTILITY);
+                                ok.setTitle("Comprobante generado");
+                                ok.setHeaderText(null);
+                                ok.setContentText("PDF generado: " + pdf.getAbsolutePath());
+                                ok.showAndWait();
+                            } catch (Exception ex) {
+                                mostrarAlerta("Error", "No se pudo generar el comprobante: " + ex.getMessage());
+                            }
+                        });
+                        if (menuFacturas != null) menuFacturas.getItems().add(mi);
+                    }
+                }
+            } catch (Exception ignore) {}
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -337,6 +389,7 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private void onMisTurnos()    { mostrarPanel(panelTurnos,        "Mis Turnos");     cargarMisTurnos(); }
     @FXML private void onHistorial()    { mostrarPanel(panelHistorial,      "Historial");      cargarHistorial(); }
     @FXML private void onMisPagos()     { mostrarPanel(panelPagos,         "Mis Pagos");      cargarMisPagos(); }
+    @FXML private void onMisFacturas()  { generarReporteFacturas(); }
 
     @FXML private void onLogout() {
         try {
@@ -1196,4 +1249,122 @@ private void abrirPasarelaPago(Turno turno) {
     }
 
     private String safe(String v) { return v != null ? v : "—"; }
+
+    @FXML
+    private void onVerReporte() {
+        generarReporteFacturas();
+    }
+    private void generarReporteFacturas() {
+        // Método existente: lanza diálogo de selección si hay varias plantillas
+        // (La lógica ya implementada en la versión anterior). Para compatibilidad
+        // mantenemos el comportamiento actual: reusar el método sin argumento.
+        // Si se desea forzar una plantilla concreta desde código, use
+        // `generarReporteFacturas("RPTUsuarios.jrxml")`.
+        try {
+            // Llamamos al método que gestiona detección/selección/compilación
+            // (la implementación que compila y muestra el reporte está en el mismo archivo
+            // como sobrecarga que acepta el nombre de plantilla).
+            // Aquí simplemente volvemos a usar la implementación sin parámetros.
+            // (Se mantiene para compatibilidad con FXML handlers.)
+        } catch (Exception ignored) {}
+        // Reutiliza la versión anterior que ya detecta plantillas y abre ChoiceDialog.
+        try (Connection con = Conexion.getInstancia().conectar()) {
+            // Buscar plantillas disponibles
+            List<String> candidates = Arrays.asList("RPTUsuarios.jrxml", "RPTUsuarios1.jrxml");
+            List<String> available = new ArrayList<>();
+            for (String name : candidates) {
+                try (InputStream is = findReportStream(name)) { if (is != null) { available.add(name); continue; } }
+                catch (Exception ignored) {}
+                File f = new File(new File("").getAbsolutePath(), "src/reportes/" + name);
+                if (f.exists()) available.add(name);
+            }
+
+            if (available.isEmpty()) {
+                throw new IllegalStateException("No se encontraron plantillas de reporte (RPTUsuarios*.jrxml) en recursos ni en src/reportes.");
+            }
+
+            String chosen = available.get(0);
+            if (available.size() > 1) {
+                ChoiceDialog<String> dlg = new ChoiceDialog<>(available.get(0), available);
+                dlg.setTitle("Seleccionar reporte");
+                dlg.setHeaderText("Elige la plantilla de reporte a mostrar");
+                dlg.setContentText("Reporte:");
+                java.util.Optional<String> opt = dlg.showAndWait();
+                if (opt.isPresent()) chosen = opt.get(); else return;
+            }
+
+            JasperReport jasperReport;
+            // Intentar compilar desde classpath
+            try (InputStream reportStream = findReportStream(chosen)) {
+                if (reportStream != null) jasperReport = JasperCompileManager.compileReport(reportStream);
+                else {
+                    File jrxmlFile = new File(new File("").getAbsolutePath(), "src/reportes/" + chosen);
+                    if (jrxmlFile.exists()) jasperReport = JasperCompileManager.compileReport(jrxmlFile.getAbsolutePath());
+                    else throw new IllegalStateException("No se encontró el archivo de reporte seleccionado: " + chosen);
+                }
+            }
+
+            Map<String, Object> params = new HashMap<>();
+            params.put("idventa", 0);
+
+            JasperPrint print = JasperFillManager.fillReport(jasperReport, params, con);
+            final JasperPrint p = print;
+            // Indicar estado en la UI JavaFX
+            javafx.application.Platform.runLater(() -> { if (lblMsgPagos != null) lblMsgPagos.setText("Generando reporte..."); });
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                try {
+                    JasperViewer viewer = new JasperViewer(p, false);
+                    viewer.setVisible(true);
+                    try { viewer.toFront(); viewer.setAlwaysOnTop(true); } catch (Exception _e) {}
+                    // Quitar always-on-top tras 600ms para no bloquear la UX
+                    new java.util.Timer().schedule(new java.util.TimerTask() { public void run() { try { viewer.setAlwaysOnTop(false); } catch (Exception ignore) {} } }, 600);
+                } catch (Exception ex) {
+                    mostrarAlerta("Error", "No se pudo abrir el visor de reportes: " + ex.getMessage());
+                } finally {
+                    javafx.application.Platform.runLater(() -> { if (lblMsgPagos != null) lblMsgPagos.setText(""); });
+                }
+            });
+
+        } catch (Exception e) {
+            mostrarAlerta("Error", "No se pudo generar el reporte de facturas: " + e.getMessage());
+        }
+    }
+
+    // Sobrecarga: generar reporte usando una plantilla concreta (ej: "RPTUsuarios.jrxml")
+    private void generarReporteFacturas(String chosen) {
+        try (Connection con = Conexion.getInstancia().conectar()) {
+            JasperReport jasperReport;
+            try (InputStream reportStream = getClass().getResourceAsStream("/" + chosen)) {
+                if (reportStream != null) {
+                    jasperReport = JasperCompileManager.compileReport(reportStream);
+                } else {
+                    File jrxmlFile = new File(new File("").getAbsolutePath(), "src/reportes/" + chosen);
+                    if (jrxmlFile.exists()) jasperReport = JasperCompileManager.compileReport(jrxmlFile.getAbsolutePath());
+                    else throw new IllegalStateException("No se encontró el archivo de reporte seleccionado: " + chosen);
+                }
+            }
+
+            Map<String, Object> params = new HashMap<>(); params.put("idventa", 0);
+            JasperPrint print = JasperFillManager.fillReport(jasperReport, params, con);
+            final JasperPrint p = print;
+            javafx.application.Platform.runLater(() -> { if (lblMsgPagos != null) lblMsgPagos.setText("Generando reporte..."); });
+            javax.swing.SwingUtilities.invokeLater(() -> {
+                try {
+                    JasperViewer viewer = new JasperViewer(p, false);
+                    viewer.setVisible(true);
+                    try { viewer.toFront(); viewer.setAlwaysOnTop(true); } catch (Exception _e) {}
+                    new java.util.Timer().schedule(new java.util.TimerTask() { public void run() { try { viewer.setAlwaysOnTop(false); } catch (Exception ignore) {} } }, 600);
+                } catch (Exception ex) { mostrarAlerta("Error", "No se pudo abrir el visor de reportes: " + ex.getMessage()); }
+                finally { javafx.application.Platform.runLater(() -> { if (lblMsgPagos != null) lblMsgPagos.setText(""); }); }
+            });
+        } catch (Exception e) { mostrarAlerta("Error", "No se pudo generar el reporte: " + e.getMessage()); }
+    }
+
+    // Helper: buscar el stream de un reporte JRXML en distintas ubicaciones del classpath
+    private InputStream findReportStream(String name) {
+        InputStream is = getClass().getResourceAsStream("/" + name);
+        if (is != null) return is;
+        is = getClass().getResourceAsStream("/reportes/" + name);
+        return is;
+    }
 }

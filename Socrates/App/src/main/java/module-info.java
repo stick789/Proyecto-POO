@@ -4,16 +4,19 @@ module socratesGui {
     requires javafx.controls;
     requires javafx.fxml;
     requires java.logging;
+    requires java.desktop;
     requires java.net.http;
     requires jdk.httpserver;
     requires com.fasterxml.jackson.databind;
     requires com.fasterxml.jackson.core;
     requires mysql.connector.j;
+    requires net.sf.jasperreports.core;
+    requires java.sql;
 
     // requires transitive: tipos de estos módulos aparecen en la API pública
     // de clases exportadas (Connection en Conexion.java, Stage en App.java)
-    requires transitive java.sql;
     requires transitive javafx.graphics; // Stage, Scene, Parent
+
 
     // ── Exports: paquetes visibles para otros módulos ────────────────────────
     exports socratesGui;
