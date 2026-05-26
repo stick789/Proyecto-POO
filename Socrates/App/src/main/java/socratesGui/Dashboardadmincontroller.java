@@ -21,10 +21,16 @@ import dao.PersonaDAO;
 import dao.SedeDAO;
 import dao.TurnoDAO;
 import database.Conexion;
-import entidades.*;
-import negocio.AdminService;
-import negocio.PersonaControl;
-
+import entidades.Administrador;
+import entidades.Entrenador;
+import entidades.Gimnasio;
+import entidades.Instalacion;
+import entidades.Pago;
+import entidades.Persona;
+import entidades.Piscina;
+import entidades.Sede;
+import entidades.Turno;
+import entidades.Usuario;
 import javafx.animation.FadeTransition;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -33,9 +39,24 @@ import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.TableCell;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.util.Duration;
+import negocio.AdminService;
+import negocio.PersonaControl;
 
 public class Dashboardadmincontroller implements Initializable {
 
@@ -461,7 +482,7 @@ public class Dashboardadmincontroller implements Initializable {
         ComboBox<String> cmbTipoDoc = new ComboBox<>(FXCollections.observableArrayList("CC","TI","CE","PP","NIT"));
         cmbTipoDoc.setPromptText("Tipo doc.");
         TextField        txtNumDoc  = new TextField();  txtNumDoc.setPromptText("Número de documento");
-        ComboBox<String> cmbEspec   = new ComboBox<>(FXCollections.observableArrayList("Musculacion","Natacion"));
+        ComboBox<String> cmbEspec   = new ComboBox<>(FXCollections.observableArrayList("Gimnasio","Natación"));
         cmbEspec.setPromptText("Especialidad");
 
         GridPane grid = crearGrid();
@@ -896,8 +917,8 @@ public class Dashboardadmincontroller implements Initializable {
 
     private List<Entrenador> crearEntrenadoresDemo() {
         return Arrays.asList(
-                new Entrenador("Juan Pérez",    "juan@gym.com",   "Musculacion", "CC", "55556666", 1),
-                new Entrenador("Laura Sánchez", "laura@swim.com", "Natacion",    "CC", "77778888", 2));
+                new Entrenador("Juan Pérez",    "juan@gym.com",   "Gimnasio",   "CC", "55556666", 1),
+                new Entrenador("Laura Sánchez", "laura@swim.com", "Natación",    "CC", "77778888", 2));
     }
 
     private List<Sede> crearSedesDemo() {
