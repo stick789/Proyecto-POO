@@ -398,8 +398,22 @@ ALTER TABLE `usuarios`
 --
 -- AUTO_INCREMENT de la tabla `entrenador`
 --
+-- --------------------------------------------------------
+-- AÑADIDO: columna `activo` en `usuarios` para control de activación
+-- Si la tabla ya existe sin la columna, este ALTER TABLE la creará.
+ALTER TABLE `usuarios`
+  ADD COLUMN `activo` TINYINT(1) NOT NULL DEFAULT 1;
+
 ALTER TABLE `entrenador`
   MODIFY `idEntrenador` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+-- --------------------------------------------------------
+-- AÑADIDO: columnas para registrar cancelaciones de turnos
+-- Si la tabla `turno` existe sin estas columnas, este ALTER las creará.
+ALTER TABLE `turno`
+  ADD COLUMN `cancelado_por` int(11) DEFAULT NULL,
+  ADD COLUMN `cancelado_en` datetime DEFAULT NULL;
+
 
 --
 -- AUTO_INCREMENT de la tabla `historial_citas`
