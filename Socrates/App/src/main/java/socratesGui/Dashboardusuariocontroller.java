@@ -158,8 +158,7 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private TableColumn<Pago, String>  colPagoFecha;
     @FXML private Label                      lblMsgPagos;
     @FXML private TextField                  txtBuscarPago;
-
-    // ── Guardado de datos para filtrado por ID ───────────────────────────────
+// ── Guardado de datos para filtrado por ID ───────────────────────────────
     private final List<Turno> turnosActivosBase = new ArrayList<>();
     private final List<Turno> historialBase = new ArrayList<>();
     private final List<Pago> pagosBase = new ArrayList<>();
@@ -182,6 +181,7 @@ public class Dashboardusuariocontroller implements Initializable {
     private ConsultaTurnos  consultaTurnos;
     private ServicioTurnos  servicioTurnos;
     private ServicioAsignarEntrenador servicioAsignarEntrenador;
+    
 
     // ─────────────────────────────────────────────────────────────────────────
     //  INITIALIZE
@@ -226,9 +226,6 @@ public class Dashboardusuariocontroller implements Initializable {
 
             // Buscadores de tablas
             inicializarBuscadores();
-
-            // Completar automáticamente turnos vencidos antes de mostrar datos
-            sincronizarTurnosVencidos();
 
             // Cargar inicio
             cargarInicio();
@@ -960,7 +957,6 @@ private void abrirPasarelaPago(Turno turno) {
 
     private void cargarInicio() {
         try {
-            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Turno> turnos;
             List<Pago>  pagos;
@@ -1043,7 +1039,6 @@ private void abrirPasarelaPago(Turno turno) {
 
     private void cargarMisTurnos() {
         try {
-            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Turno> turnos;
             if (user == null || user.getId() == 0) {
@@ -1069,7 +1064,6 @@ private void abrirPasarelaPago(Turno turno) {
 
     private void cargarHistorial() {
         try {
-            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Turno> hist;
             if (user == null || user.getId() == 0) {
@@ -1099,7 +1093,6 @@ private void abrirPasarelaPago(Turno turno) {
 
     private void cargarMisPagos() {
         try {
-            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Pago> pagos;
             if (user == null || user.getId() == 0) {
@@ -1149,19 +1142,6 @@ private void abrirPasarelaPago(Turno turno) {
         tablaPagos.setItems(FXCollections.observableArrayList(filtrados));
         if (filtrados.isEmpty() && !pagosBase.isEmpty()) {
             lblMsgPagos.setText("No hay pagos que coincidan con la búsqueda.");
-        }
-    }
-
-    private void sincronizarTurnosVencidos() {
-        try {
-            if (servicioTurnos != null) {
-                java.util.List<Turno> upd = servicioTurnos.completarTurnosVencidos();
-                if (upd != null && !upd.isEmpty()) {
-                    lblMsgGlobal.setText("Se completaron automáticamente " + upd.size() + " turnos.");
-                }
-            }
-        } catch (Exception e) {
-            lblMsgGlobal.setText("No se pudo actualizar el estado automático de turnos: " + e.getMessage());
         }
     }
 
@@ -1423,4 +1403,3 @@ private void abrirPasarelaPago(Turno turno) {
         return is;
     }
 }
-
