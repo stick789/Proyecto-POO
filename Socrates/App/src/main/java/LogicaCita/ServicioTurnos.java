@@ -315,6 +315,36 @@ public class ServicioTurnos {
         return count;
     }
 
+    /**
+     * Completa automáticamente los turnos reservados cuya hora asignada ya quedó
+     * hace más de una hora. Usa la lógica transaccional interna para liberar
+     * cupo y actualizar aforo.
+     *
+     * @return lista de turnos que fueron completados.
+     */
+    public java.util.List<Turno> completarTurnosVencidos() {
+        java.util.List<Turno> actualizados = new java.util.ArrayList<>();
+        LocalDateTime ahora = LocalDateTime.now();
+
+        for (Turno turno : turnoDAO.listarTodos()) {
+            if (turno == null || turno.getFechaHora() == null) continue;
+            if (!Turno.ESTADO_RESERVADO.equals(turno.getEstado())) continue;
+
+            LocalDateTime vencimiento = turno.getFechaHora().plusHours(1);
+            if (ahora.isBefore(vencimiento)) continue;
+
+            try {
+                // reutilizar la lógica interna que libera cupo, actualiza aforo y registra historial
+                completarTurnoInterno(turno);
+                actualizados.add(turno);
+            } catch (Exception ex) {
+                // Ignorar errores individuales para continuar con el batch
+            }
+        }
+
+        return actualizados;
+    }
+
     private int validarMax(int max) {
         if (max <= 0) throw new IllegalArgumentException("El maximo de personas por carril debe ser mayor a 0.");
         return max;

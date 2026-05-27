@@ -160,9 +160,9 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private TextField                  txtBuscarPago;
 
     // ── Guardado de datos para filtrado por ID ───────────────────────────────
-    private List<Turno> turnosActivos      = new ArrayList<>();
-    private List<Turno> turnosHistorial    = new ArrayList<>();
-    private List<Pago>  pagosUsuario       = new ArrayList<>();
+    private final List<Turno> turnosActivosBase = new ArrayList<>();
+    private final List<Turno> historialBase = new ArrayList<>();
+    private final List<Pago> pagosBase = new ArrayList<>();
 
     // ── Estado de la selección de turno ──────────────────────────────────────
     private Instalacion instalacionSeleccionada = null;
@@ -223,7 +223,12 @@ public class Dashboardusuariocontroller implements Initializable {
 
             // Formulario de agendamiento
             inicializarFormularioAgendamiento();
+
+            // Buscadores de tablas
             inicializarBuscadores();
+
+            // Completar automáticamente turnos vencidos antes de mostrar datos
+            sincronizarTurnosVencidos();
 
             // Cargar inicio
             cargarInicio();
@@ -358,6 +363,18 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private void onHistorial()    { mostrarPanel(panelHistorial,      "Historial");      if (txtBuscarHistorial != null) txtBuscarHistorial.clear(); cargarHistorial(); }
     @FXML private void onMisPagos()     { mostrarPanel(panelPagos,         "Mis Pagos");      if (txtBuscarPago      != null) txtBuscarPago.clear();      cargarMisPagos(); }
     @FXML private void onMisFacturas()  { onMisPagos(); }
+
+    private void inicializarBuscadores() {
+        if (txtBuscarTurno != null) {
+            txtBuscarTurno.textProperty().addListener((obs, oldValue, newValue) -> aplicarFiltroTurnos());
+        }
+        if (txtBuscarHistorial != null) {
+            txtBuscarHistorial.textProperty().addListener((obs, oldValue, newValue) -> aplicarFiltroHistorial());
+        }
+        if (txtBuscarPago != null) {
+            txtBuscarPago.textProperty().addListener((obs, oldValue, newValue) -> aplicarFiltroPagos());
+        }
+    }
 
     @FXML private void onLogout() {
         try {
@@ -943,6 +960,7 @@ private void abrirPasarelaPago(Turno turno) {
 
     private void cargarInicio() {
         try {
+            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Turno> turnos;
             List<Pago>  pagos;
@@ -1025,6 +1043,7 @@ private void abrirPasarelaPago(Turno turno) {
 
     private void cargarMisTurnos() {
         try {
+            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Turno> turnos;
             if (user == null || user.getId() == 0) {
@@ -1042,13 +1061,15 @@ private void abrirPasarelaPago(Turno turno) {
                     lblMsgTurnos.setText("Error BD - mostrando demo");
                 }
             }
-            turnosActivos = turnos;
-            tablaTurnos.setItems(FXCollections.observableArrayList(turnosActivos));
+            turnosActivosBase.clear();
+            turnosActivosBase.addAll(turnos);
+            aplicarFiltroTurnos();
         } catch (Exception e) { e.printStackTrace(); }
     }
 
     private void cargarHistorial() {
         try {
+            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Turno> hist;
             if (user == null || user.getId() == 0) {
@@ -1068,8 +1089,9 @@ private void abrirPasarelaPago(Turno turno) {
                     lblMsgHistorial.setText("Error BD: " + ex.getMessage());
                 }
             }
-            turnosHistorial = hist;
-            tablaHistorial.setItems(FXCollections.observableArrayList(turnosHistorial));
+            historialBase.clear();
+            historialBase.addAll(hist);
+            aplicarFiltroHistorial();
             if (hist.isEmpty()) lblMsgHistorial.setText("No hay turnos en el historial.");
             else lblMsgHistorial.setText("");
         } catch (Exception e) { e.printStackTrace(); }
@@ -1077,6 +1099,7 @@ private void abrirPasarelaPago(Turno turno) {
 
     private void cargarMisPagos() {
         try {
+            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Pago> pagos;
             if (user == null || user.getId() == 0) {
@@ -1091,87 +1114,76 @@ private void abrirPasarelaPago(Turno turno) {
                     lblMsgPagos.setText("Error BD - mostrando demo");
                 }
             }
-            pagosUsuario = pagos;
-            tablaPagos.setItems(FXCollections.observableArrayList(pagosUsuario));
+            pagosBase.clear();
+            pagosBase.addAll(pagos);
+            aplicarFiltroPagos();
         } catch (Exception e) { e.printStackTrace(); }
     }
 
-    private void inicializarBuscadores() {
-        if (txtBuscarTurno != null) {
-            txtBuscarTurno.textProperty().addListener((obs, ov, nv) -> filtrarTurnosPorId(nv));
-        }
-        if (txtBuscarHistorial != null) {
-            txtBuscarHistorial.textProperty().addListener((obs, ov, nv) -> filtrarHistorialPorId(nv));
-        }
-        if (txtBuscarPago != null) {
-            txtBuscarPago.textProperty().addListener((obs, ov, nv) -> filtrarPagosPorId(nv));
-        }
-    }
-
-    private void filtrarTurnosPorId(String texto) {
-        lblMsgTurnos.setText("");
-        if (texto == null || texto.trim().isEmpty()) {
-            tablaTurnos.setItems(FXCollections.observableArrayList(turnosActivos));
-            return;
-        }
-        String idTexto = texto.trim();
-        if (!idTexto.matches("\\d+")) {
-            tablaTurnos.setItems(FXCollections.observableArrayList());
-            lblMsgTurnos.setText("ID inválido: el valor debe ser un número entero.");
-            return;
-        }
-        int id = Integer.parseInt(idTexto);
-        List<Turno> filtrados = turnosActivos.stream()
-                .filter(t -> t.getIdTurno() == id)
+    private void aplicarFiltroTurnos() {
+        String filtro = txtBuscarTurno == null ? "" : txtBuscarTurno.getText();
+        List<Turno> filtrados = turnosActivosBase.stream()
+                .filter(t -> coincideTurno(t, filtro))
                 .collect(Collectors.toList());
         tablaTurnos.setItems(FXCollections.observableArrayList(filtrados));
-        if (filtrados.isEmpty()) {
-            lblMsgTurnos.setText("No existe un turno con ID " + id + ".");
-        }
+        lblMsgTurnos.setText(filtrados.isEmpty() && !turnosActivosBase.isEmpty()
+                ? "No hay turnos que coincidan con la búsqueda." : lblMsgTurnos.getText());
     }
 
-    private void filtrarHistorialPorId(String texto) {
-        lblMsgHistorial.setText("");
-        if (texto == null || texto.trim().isEmpty()) {
-            tablaHistorial.setItems(FXCollections.observableArrayList(turnosHistorial));
-            return;
-        }
-        String idTexto = texto.trim();
-        if (!idTexto.matches("\\d+")) {
-            tablaHistorial.setItems(FXCollections.observableArrayList());
-            lblMsgHistorial.setText("ID inválido: el valor debe ser un número entero.");
-            return;
-        }
-        int id = Integer.parseInt(idTexto);
-        List<Turno> filtrados = turnosHistorial.stream()
-                .filter(t -> t.getIdTurno() == id)
+    private void aplicarFiltroHistorial() {
+        String filtro = txtBuscarHistorial == null ? "" : txtBuscarHistorial.getText();
+        List<Turno> filtrados = historialBase.stream()
+                .filter(t -> coincideTurno(t, filtro))
                 .collect(Collectors.toList());
         tablaHistorial.setItems(FXCollections.observableArrayList(filtrados));
-        if (filtrados.isEmpty()) {
-            lblMsgHistorial.setText("No existe un turno en el historial con ID " + id + ".");
+        if (filtrados.isEmpty() && !historialBase.isEmpty()) {
+            lblMsgHistorial.setText("No hay turnos que coincidan con la búsqueda.");
         }
     }
 
-    private void filtrarPagosPorId(String texto) {
-        lblMsgPagos.setText("");
-        if (texto == null || texto.trim().isEmpty()) {
-            tablaPagos.setItems(FXCollections.observableArrayList(pagosUsuario));
-            return;
-        }
-        String idTexto = texto.trim();
-        if (!idTexto.matches("\\d+")) {
-            tablaPagos.setItems(FXCollections.observableArrayList());
-            lblMsgPagos.setText("ID inválido: el valor debe ser un número entero.");
-            return;
-        }
-        int id = Integer.parseInt(idTexto);
-        List<Pago> filtrados = pagosUsuario.stream()
-                .filter(p -> p.getIdPago() == id)
+    private void aplicarFiltroPagos() {
+        String filtro = txtBuscarPago == null ? "" : txtBuscarPago.getText();
+        List<Pago> filtrados = pagosBase.stream()
+                .filter(p -> coincidePago(p, filtro))
                 .collect(Collectors.toList());
         tablaPagos.setItems(FXCollections.observableArrayList(filtrados));
-        if (filtrados.isEmpty()) {
-            lblMsgPagos.setText("No existe un pago con ID " + id + ".");
+        if (filtrados.isEmpty() && !pagosBase.isEmpty()) {
+            lblMsgPagos.setText("No hay pagos que coincidan con la búsqueda.");
         }
+    }
+
+    private void sincronizarTurnosVencidos() {
+        try {
+            if (servicioTurnos != null) {
+                java.util.List<Turno> upd = servicioTurnos.completarTurnosVencidos();
+                if (upd != null && !upd.isEmpty()) {
+                    lblMsgGlobal.setText("Se completaron automáticamente " + upd.size() + " turnos.");
+                }
+            }
+        } catch (Exception e) {
+            lblMsgGlobal.setText("No se pudo actualizar el estado automático de turnos: " + e.getMessage());
+        }
+    }
+
+    private boolean coincideTurno(Turno turno, String filtro) {
+        String texto = filtro == null ? "" : filtro.trim().toLowerCase();
+        if (texto.isEmpty()) return true;
+        return String.valueOf(turno.getIdTurno()).contains(texto)
+                || safe(turno.getEstado()).toLowerCase().contains(texto)
+                || safe(turno.getDuracionMinutos() + "").contains(texto)
+                || (turno.getInstalacion() != null && (
+                        safe(turno.getInstalacion().getTipo()).toLowerCase().contains(texto)
+                        || safe(turno.getInstalacion().getNombre()).toLowerCase().contains(texto)
+                        || safe(turno.getInstalacion().getNombreSede()).toLowerCase().contains(texto)
+                        || safe(turno.getInstalacion().getDireccionSede()).toLowerCase().contains(texto)))
+                || (turno.getFechaHora() != null && turno.getFechaHora().format(FMT_DISPLAY).toLowerCase().contains(texto))
+                || safe(turno.getNumeroCarrilAsignado() != null ? String.valueOf(turno.getNumeroCarrilAsignado()) : "").toLowerCase().contains(texto);
+    }
+
+    private boolean coincidePago(Pago pago, String filtro) {
+        String texto = filtro == null ? "" : filtro.trim().toLowerCase();
+        if (texto.isEmpty()) return true;
+        return String.valueOf(pago.getIdPago()).contains(texto);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1411,3 +1423,4 @@ private void abrirPasarelaPago(Turno turno) {
         return is;
     }
 }
+
