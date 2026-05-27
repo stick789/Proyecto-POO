@@ -849,9 +849,9 @@ public class Dashboardadmincontroller implements Initializable {
         if (adminId == 0) { mostrarError("Sin sesión", "Inicia sesión como administrador."); return; }
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Editar Instalación #" + inst.getIdInstalacion());
-        dialog.setHeaderText("Modificar instalación (" + inst.getTipo() + ")");
+        dialog.setHeaderText("Modificar instalación (" + inst.getTipo() + ") - Máximo: 30 personas");
         TextField txtNombre = new TextField(inst.getClass().getSimpleName());
-        Spinner<Integer> spCapacidad = new Spinner<>(1, 500, inst.getCapacidadMaxima());
+        Spinner<Integer> spCapacidad = new Spinner<>(1, 30, Math.min(inst.getCapacidadMaxima(), 30));
         spCapacidad.setEditable(true);
         GridPane grid = crearGrid();
         grid.add(new Label("Nombre:"),    0, 0); grid.add(txtNombre,   1, 0);

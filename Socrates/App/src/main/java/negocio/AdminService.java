@@ -216,8 +216,15 @@ public class AdminService {
 
     /**
      * Edita nombre y capacidad de instalación.
+     * La capacidad máxima permitida es 30 personas para gimnasios y piscinas debido a que 500 ya es un numero un poco irregular.
      */
     public void editarInstalacion(int adminId, int instalacionId, String nombre, int capacidad) {
+        if (capacidad > 30) {
+            throw new IllegalArgumentException("Capacidad máxima permitida: 30 personas. Se ingresó: " + capacidad);
+        }
+        if (capacidad < 1) {
+            throw new IllegalArgumentException("La capacidad debe ser mayor a 0.");
+        }
         Connection con = conexion.conectar();
         if (con == null) throw new RuntimeException("Sin conexión a BD");
         String sql = "UPDATE instalacion SET nombre = ?, capacidadMaxima = ? WHERE idInstalacion = ?";
