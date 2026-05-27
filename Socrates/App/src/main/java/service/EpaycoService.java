@@ -9,7 +9,6 @@ import java.util.Map;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import dao.EpaycoEstadoParser;
 
 public class EpaycoService {
     private static final String API_BASE_URL = "https://apify.epayco.co";

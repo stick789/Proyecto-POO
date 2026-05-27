@@ -37,23 +37,23 @@ public class EntrenadorDAO implements IEntrenadorDAO {
             "INSERT INTO persona (nombre, email, tipodocumento, numdocumento) VALUES (?, ?, ?, ?)";
 
     private static final String SQL_INSERT_USUARIO =
-            "INSERT INTO usuarios (id_persona, contraseña, categoria, esAfiliado, id_rol) " +
-            "VALUES (?, ?, 'NO AFILIADO', 0, " +
-            "  (SELECT id_rol FROM rol WHERE nombre_rol = 'ENTRENADOR' LIMIT 1))";
+        "INSERT INTO usuarios (id_persona, contraseña, categoria, esAfiliado, id_rol) " +
+        "VALUES (?, ?, 'NO AFILIADO', 0, " +
+        "  (SELECT id_rol FROM rol WHERE nombre_rol = 'ENTRENADOR' LIMIT 1))";
 
     // FIX: columnas reales según el SQL — idEntrenador, especialidad, numDocumento
     private static final String SQL_INSERT_ENTRENADOR =
-            "INSERT INTO entrenador (idEntrenador, especialidad, numDocumento) VALUES (?, ?, ?)";
+        "INSERT INTO entrenador (idEntrenador, especialidad, numDocumento) VALUES (?, ?, ?)";
 
     // ── SELECT ────────────────────────────────────────────────────────────────
 
     private static final String SQL_SELECT_BASE =
-            "SELECT u.idusuario, p.nombre, p.email, p.tipodocumento, p.numdocumento, " +
-            "       e.especialidad, r.nombre_rol " +
-            "FROM entrenador e " +
-            "JOIN persona p ON e.numDocumento = p.numdocumento " +
-            "JOIN usuarios u ON u.id_persona = p.id_persona " +
-            "LEFT JOIN rol r ON u.id_rol = r.id_rol ";
+        "SELECT u.idusuario, p.nombre, p.email, p.tipodocumento, p.numdocumento, " +
+        "       e.especialidad, r.nombre_rol " +
+        "FROM entrenador e " +
+        "JOIN persona p ON e.numDocumento = p.numdocumento " +
+        "JOIN usuarios u ON u.id_persona = p.id_persona " +
+        "LEFT JOIN rol r ON u.id_rol = r.id_rol ";
 
     private static final String SQL_SELECT_POR_ID =
             SQL_SELECT_BASE + "WHERE e.idEntrenador = ?";
@@ -127,31 +127,31 @@ public class EntrenadorDAO implements IEntrenadorDAO {
             // 2. Insertar en usuarios con rol ENTRENADOR
             int idUsuario;
             try (PreparedStatement ps = con.prepareStatement(
-                    SQL_INSERT_USUARIO, Statement.RETURN_GENERATED_KEYS)) {
+                SQL_INSERT_USUARIO, Statement.RETURN_GENERATED_KEYS)) {
                 ps.setInt(1, idPersona);
                 ps.setString(2, contraseñaHash);
                 ps.executeUpdate();
                 try (ResultSet keys = ps.getGeneratedKeys()) {
-                    if (!keys.next()) throw new SQLException("No se generó idusuario.");
-                    idUsuario = keys.getInt(1);
+                if (!keys.next()) throw new SQLException("No se generó idusuario.");
+                idUsuario = keys.getInt(1);
                 }
             }
 
             // 3. FIX: insertar en entrenador con columnas reales del esquema SQL
             //    idEntrenador = idusuario generado, numDocumento = FK a persona
             try (PreparedStatement ps = con.prepareStatement(SQL_INSERT_ENTRENADOR)) {
-                ps.setInt(1, idUsuario);
-                ps.setString(2, entrenador.getEspecialidad());
-                ps.setString(3, entrenador.getNumDocumento());
-                ps.executeUpdate();
+            ps.setInt(1, idUsuario);
+            ps.setString(2, entrenador.getEspecialidad());
+            ps.setString(3, entrenador.getNumDocumento());
+            ps.executeUpdate();
             }
 
-            entrenador.setIdEntrenador(idUsuario);
-            con.commit();
+        entrenador.setIdEntrenador(idUsuario);
+        con.commit();
 
-        } catch (SQLException e) {
+    } catch (SQLException e) {
             revertirTransaccion(con, e, "Error al insertar entrenador");
-        } finally {
+    } finally {
             restaurarAutoCommit(con);
             conexion.desconectar();
         }
