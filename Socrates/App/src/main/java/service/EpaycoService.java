@@ -136,18 +136,31 @@ public class EpaycoService {
         if (response == null || response.isBlank()) return null;
         try {
             JsonNode root = objectMapper.readTree(response);
-            // Solo buscar claves explícitas — NO "ref", "reference" ni búsqueda amplia,
-            // ya que podrían capturar el sessionId hexadecimal u otros valores no numéricos
+            // buscar claves típicas y variantes: ref_payco, refPayco, ref, reference, epaycoReference, pay_reference
             String r = findKeyRecursive(root, "ref_payco");
-            if (r == null) r = findKeyRecursive(root, "x_ref_payco");
             if (r == null) r = findKeyRecursive(root, "refPayco");
+            if (r == null) r = findKeyRecursive(root, "ref");
+            if (r == null) r = findKeyRecursive(root, "reference");
+            if (r == null) r = findKeyRecursive(root, "epaycoReference");
+            if (r == null) r = findKeyRecursive(root, "pay_reference");
+            // búsqueda más amplia: claves que parezcan referencia/recibo
+            if (r == null) r = findRefLikeRecursive(root);
             if (r == null) return null;
 
-            // El ref_payco de ePayco es SIEMPRE puramente numérico (ej: 100000123)
-            // Los sessionIds son hexadecimales (ej: 6a165b65...) — se descartan aquí
-            if (r.matches("[0-9]{5,12}")) return r;
+            // Normalizar: extraer dígitos representativos del recibo (5-12 dígitos)
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("([0-9]{5,12})").matcher(r);
+            if (m.find()) return m.group(1);
+            // Si no hay dígitos, descartamos para no tomar descripciones por error
             return null;
         } catch (java.io.IOException e) {
+            // si no es JSON, intentar buscar patrones numéricos comunes en el HTML/texto
+            try {
+                java.util.regex.Pattern p = java.util.regex.Pattern.compile("(Referencia ePayco|Referencia|Recibo|ref_payco|refPayco|ref)[^0-9]{0,10}([0-9]{5,12})", java.util.regex.Pattern.CASE_INSENSITIVE);
+                java.util.regex.Matcher m = p.matcher(response);
+                if (m.find()) return m.group(2);
+            } catch (RuntimeException ex) {
+                // ignore
+            }
             return null;
         }
     }
@@ -165,6 +178,36 @@ public class EpaycoService {
         } else if (node.isArray()) {
             for (JsonNode e : node) {
                 String r = findKeyRecursive(e, key);
+                if (r != null) return r;
+            }
+        }
+        return null;
+    }
+
+    private String findRefLikeRecursive(JsonNode node) {
+        if (node == null) return null;
+        if (node.isObject()) {
+            Iterator<String> it = node.fieldNames();
+            while (it.hasNext()) {
+                String f = it.next();
+                String lower = f.toLowerCase();
+                boolean keyLooksLikeRef = lower.contains("ref") || lower.contains("reference") || lower.contains("recibo");
+                JsonNode v = node.get(f);
+                if (keyLooksLikeRef && v != null) {
+                    // Prefer numeric values (the recibo/ref suele ser numérico)
+                    if (v.isNumber()) return v.asText();
+                    if (v.isTextual()) {
+                        String txt = v.asText().trim();
+                        java.util.regex.Matcher m = java.util.regex.Pattern.compile("([0-9]{5,12})").matcher(txt);
+                        if (m.find()) return m.group(1);
+                    }
+                }
+                String r = findRefLikeRecursive(v);
+                if (r != null) return r;
+            }
+        } else if (node.isArray()) {
+            for (JsonNode e : node) {
+                String r = findRefLikeRecursive(e);
                 if (r != null) return r;
             }
         }

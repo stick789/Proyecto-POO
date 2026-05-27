@@ -153,11 +153,10 @@ public class PagosOnlineDAO {
     }
 
     public String aplicarResultadoRealDesdeReferencia(int idPago, String refPayco) throws Exception {
-        // ref_payco de ePayco es siempre numérico — rechazar sessionIds hexadecimales
-        if (refPayco == null || refPayco.isBlank() || !refPayco.matches("[0-9]{5,12}")) {
-            System.out.println("[PagosOnlineDAO] refPayco inválido o es sessionId, se omite: " + refPayco);
+        if (refPayco == null || refPayco.isBlank()) {
             return Pago.ESTADO_PENDIENTE;
         }
+
         // ePayco puede tardar unos segundos en reflejar el estado final por referencia.
         // Reintentamos brevemente antes de dejarlo en PENDIENTE para evitar falsos pendientes.
         EpaycoStatusResult statusResult = null;
@@ -284,8 +283,7 @@ public class PagosOnlineDAO {
             raw = statusResult != null && statusResult.getEstado() != null ? statusResult.getEstado().trim() : "";
             System.out.println("[PagosOnlineDAO] estado crudo recibido de ePayco para idPago=" + idPago + ": " + raw);
             // Si la respuesta incluye ref_payco, guardarla
-           if (statusResult != null && statusResult.getRefPayco() != null
-                    && statusResult.getRefPayco().matches("[0-9]{5,12}")) {
+            if (statusResult != null && statusResult.getRefPayco() != null && !statusResult.getRefPayco().isBlank()) {
                 try {
                     pagoDAO.actualizarRefPayco(idPago, statusResult.getRefPayco());
                 } catch (Exception e) {
@@ -384,6 +382,23 @@ public class PagosOnlineDAO {
         }
         System.out.println("[PagosOnlineDAO] Clasificación final idPago=" + idPago + " -> PENDIENTE | motivo=no hubo coincidencia clara de aprobado/rechazado.");
         return Pago.ESTADO_PENDIENTE;
+    }
+
+    private void marcarPagoComoFallido(Pago pago, int idPago, String detalle) {
+        try {
+            pagoDAO.actualizarEstado(idPago, Pago.ESTADO_FALLIDO);
+            cancelarTurnoAsociado(pago, idPago, detalle);
+            HistorialCitasDAO histDao = new HistorialCitasDAO();
+            Historial_citas h = new Historial_citas();
+            h.setIdTurno(String.valueOf(pago.getIdTurno()));
+            h.setIdUsuario(pago.getIdUsuario());
+            h.setIdInstalacion("0");
+            h.setEstado("FALLIDO");
+            h.setDetalle("Pago FALLIDO (idPago=" + idPago + ") - " + detalle);
+            histDao.insertar(h);
+        } catch (Exception ignore) {
+            // no interrumpimos el flujo por fallos al registrar el historial
+        }
     }
 
     private void cancelarTurnoAsociado(Pago pago, int idPago, String detalle) {

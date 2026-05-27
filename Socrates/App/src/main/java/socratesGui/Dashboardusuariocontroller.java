@@ -1,4 +1,5 @@
 package socratesGui;
+
 import java.math.BigDecimal;
 import java.net.URL;
 import java.time.LocalDate;
@@ -125,7 +126,7 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private TableColumn<Turno, String> colTurnoCarril;
     @FXML private Button                     btnCancelarTurno;
     @FXML private Label                      lblMsgTurnos;
-    @FXML private TextField                  txtBuscarTurno;
+    @FXML private TextField                   txtBuscarTurno;
 
     // ── Tabla Historial ───────────────────────────────────────────────────────
     @FXML private TableView<Turno>           tablaHistorial;
@@ -135,7 +136,7 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private TableColumn<Turno, String> colHistDuracion;
     @FXML private TableColumn<Turno, String> colHistEstado;
     @FXML private Label                      lblMsgHistorial;
-    @FXML private TextField                  txtBuscarHistorial;
+    @FXML private TextField                   txtBuscarHistorial;
 
     // ── Tabla Pagos ───────────────────────────────────────────────────────────
     @FXML private TableView<Pago>            tablaPagos;
@@ -146,12 +147,7 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private TableColumn<Pago, String>  colPagoEstado;
     @FXML private TableColumn<Pago, String>  colPagoFecha;
     @FXML private Label                      lblMsgPagos;
-    @FXML private TextField                  txtBuscarPago;
-
-    // ── Guardado de datos para filtrado por ID ───────────────────────────────
-    private final List<Turno> turnosActivosBase = new ArrayList<>();
-    private final List<Turno> historialBase = new ArrayList<>();
-    private final List<Pago> pagosBase = new ArrayList<>();
+    @FXML private TextField                   txtBuscarPago;
 
     // ── Estado de la selección de turno ──────────────────────────────────────
     private Instalacion instalacionSeleccionada = null;
@@ -171,7 +167,6 @@ public class Dashboardusuariocontroller implements Initializable {
     private ConsultaTurnos  consultaTurnos;
     private ServicioTurnos  servicioTurnos;
     private ServicioAsignarEntrenador servicioAsignarEntrenador;
-
 
     // ─────────────────────────────────────────────────────────────────────────
     //  INITIALIZE
@@ -214,8 +209,10 @@ public class Dashboardusuariocontroller implements Initializable {
             // Formulario de agendamiento
             inicializarFormularioAgendamiento();
 
-            // Buscadores de tablas
-            inicializarBuscadores();
+            // Listeners para búsquedas en panel usuario
+            if (txtBuscarTurno != null) txtBuscarTurno.textProperty().addListener((obs, o, n) -> filtrarTurnos(n));
+            if (txtBuscarHistorial != null) txtBuscarHistorial.textProperty().addListener((obs, o, n) -> filtrarHistorial(n));
+            if (txtBuscarPago != null) txtBuscarPago.textProperty().addListener((obs, o, n) -> filtrarPagos(n));
 
             // Cargar inicio
             cargarInicio();
@@ -346,22 +343,9 @@ public class Dashboardusuariocontroller implements Initializable {
 
     @FXML private void onInicio()       { mostrarPanel(panelInicio,        "Inicio");         cargarInicio(); }
     @FXML private void onAgendarTurno() { mostrarPanel(panelAgendarTurno,  "Agendar Turno");  limpiarFormulario(); }
-    @FXML private void onMisTurnos()    { mostrarPanel(panelTurnos,        "Mis Turnos");     if (txtBuscarTurno     != null) txtBuscarTurno.clear();     cargarMisTurnos(); }
-    @FXML private void onHistorial()    { mostrarPanel(panelHistorial,      "Historial");      if (txtBuscarHistorial != null) txtBuscarHistorial.clear(); cargarHistorial(); }
-    @FXML private void onMisPagos()     { mostrarPanel(panelPagos,         "Mis Pagos");      if (txtBuscarPago      != null) txtBuscarPago.clear();      cargarMisPagos(); }
-    @FXML private void onMisFacturas()  { onMisPagos(); }
-
-    private void inicializarBuscadores() {
-        if (txtBuscarTurno != null) {
-            txtBuscarTurno.textProperty().addListener((obs, oldValue, newValue) -> aplicarFiltroTurnos());
-        }
-        if (txtBuscarHistorial != null) {
-            txtBuscarHistorial.textProperty().addListener((obs, oldValue, newValue) -> aplicarFiltroHistorial());
-        }
-        if (txtBuscarPago != null) {
-            txtBuscarPago.textProperty().addListener((obs, oldValue, newValue) -> aplicarFiltroPagos());
-        }
-    }
+    @FXML private void onMisTurnos()    { mostrarPanel(panelTurnos,        "Mis Turnos");     cargarMisTurnos(); }
+    @FXML private void onHistorial()    { mostrarPanel(panelHistorial,      "Historial");      cargarHistorial(); }
+    @FXML private void onMisPagos()     { mostrarPanel(panelPagos,         "Mis Pagos");      cargarMisPagos(); }
 
     @FXML private void onLogout() {
         try {
@@ -390,6 +374,9 @@ public class Dashboardusuariocontroller implements Initializable {
      * Carga las instalaciones del tipo dado que pertenecen a la sede del usuario.
      * Si hay más de una, abre un ChoiceDialog para que el usuario elija.
      * Si solo hay una, la selecciona directamente.
+     *
+     * Como la sesión todavía no almacena una sede propia, se agregan las
+     * instalaciones de todas las sedes registradas para no ocultar sedes nuevas.
      */
     private void mostrarSelectorInstalacion(String tipo) {
         List<Instalacion> opciones = listarInstalacionesPorTipo(tipo);
@@ -402,8 +389,10 @@ public class Dashboardusuariocontroller implements Initializable {
         }
 
         if (opciones.size() == 1) {
+            // Solo una opción — selección directa, sin diálogo
             aplicarSeleccionInstalacion(opciones.get(0), tipo);
         } else {
+            // Varias opciones — el usuario elige
             ChoiceDialog<Instalacion> dialog =
                     new ChoiceDialog<>(opciones.get(0), opciones);
             dialog.setTitle("Seleccionar instalación");
@@ -415,6 +404,7 @@ public class Dashboardusuariocontroller implements Initializable {
 
     /**
      * Reúne instalaciones del tipo solicitado en todas las sedes registradas.
+     * Esto evita que una sede nueva quede fuera si la sesión aún no conoce su id.
      */
     private List<Instalacion> listarInstalacionesPorTipo(String tipo) {
         List<Instalacion> opciones = new ArrayList<>();
@@ -489,37 +479,52 @@ public class Dashboardusuariocontroller implements Initializable {
     }
 
     /**
+     * Devuelve el idSede del usuario logueado.
+     * Si la entidad Usuario/Persona no expone aún ese dato, retorna 1 (sede CUR)
+     * como valor por defecto temporal.
+     * todo: guardar idSede en SesionActual cuando se enriquezca el login.
+     */
+    private int obtenerIdSedeUsuario() {
+        // Si en el futuro SesionActual expone getSede(), usar:
+        // Sede s = SesionActual.getSede();
+        // return (s != null) ? s.getIdSede() : 1;
+        return 1;
+    }
+
+    /**
      * Muestra el panel de selección de entrenador con animación.
      */
     private void mostrarPanelEntrenador() {
         quiereEntrenador = false;
         entrenadorAsignado = null;
         lblEntrenadorSeleccionado.setText("");
+        // Reset coach button styles
         btnConEntrenador.setStyle("-fx-background-color: white; -fx-border-color: #E85D04; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand; -fx-text-fill: #E85D04;");
         btnSinEntrenador.setStyle("-fx-background-color: white; -fx-border-color: #aaa; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand; -fx-text-fill: #555;");
         panelEntrenador.setVisible(true);
         panelEntrenador.setManaged(true);
     }
-
-    private void abrirPasarelaPago(Turno turno) {
+private void abrirPasarelaPago(Turno turno) {
         try {
+            //Cargar FMXL
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/Interface/pasarelaPagos.fxml"));
             Parent root = loader.load();
 
             PasarelaPagosController controller = loader.getController();
+            // Pasar el turno - iniciara automaticamente el proceso de pago
             controller.setTurno(turno);
+            // Pasar HostServices para poder abrir el navegador desde el controlador
             controller.setHostServices(App.getAppHostServices());
-
+            //Configurar y mostrar ventana modal
             Stage stage = new Stage();
             stage.setTitle("Pasarela de Pagos - Turno #" + turno.getIdTurno());
             stage.setScene(new Scene(root));
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.show();
-        } catch (Exception e) {
+        }catch (Exception e) {
             mostrarAlerta("Error", "No se pudo abrir la pasarela de pagos: " + e.getMessage());
         }
     }
-
     private void mostrarAlerta(String titulo, String mensaje) {
         Alert alerta = new Alert(Alert.AlertType.ERROR);
         alerta.initStyle(StageStyle.UTILITY);
@@ -539,43 +544,48 @@ public class Dashboardusuariocontroller implements Initializable {
         btnConEntrenador.setStyle("-fx-background-color: #E85D04; -fx-text-fill: white; -fx-border-color: #E85D04; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand;");
         btnSinEntrenador.setStyle("-fx-background-color: white; -fx-border-color: #aaa; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand; -fx-text-fill: #555;");
 
+        // Filter coaches by the selected installation type
         String especialidad = "PISCINA".equals(instalacionSeleccionada.getTipo())
             ? "Natación" : "Gimnasio";
 
         try {
             List<Entrenador> entrenadores = entrenadorDAO.listarPorEspecialidad(especialidad);
             if (entrenadores == null || entrenadores.isEmpty()) {
+                // Fallback: try any available coach
                 entrenadores = entrenadorDAO.listar("", 10, 1);
             }
             if (entrenadores != null && !entrenadores.isEmpty()) {
                 if (entrenadores.size() == 1) {
+                    // Si solo hay uno, asignar directamente
                     entrenadorAsignado = entrenadores.get(0);
+                    lblEntrenadorSeleccionado.setText("✅ Entrenador asignado: " + safe(entrenadorAsignado.getNombre())
+                            + " (" + safe(entrenadorAsignado.getEspecialidad()) + ")");
                 } else {
-                    List<String> opciones = entrenadores.stream()
-                            .map(e -> safe(e.getNombre()) + " (" + safe(e.getEspecialidad()) + ")")
-                            .collect(java.util.stream.Collectors.toList());
+                    // Varias opciones — mostrar ChoiceDialog para selección manual
+                    List<String> opciones = new ArrayList<>();
+                    java.util.Map<String, Entrenador> mapa = new java.util.HashMap<>();
+                    for (Entrenador e : entrenadores) {
+                        String key = e.getId() + " - " + safe(e.getNombre()) + " (" + safe(e.getEspecialidad()) + ")";
+                        opciones.add(key);
+                        mapa.put(key, e);
+                    }
                     ChoiceDialog<String> dialog = new ChoiceDialog<>(opciones.get(0), opciones);
                     dialog.setTitle("Seleccionar entrenador");
                     dialog.setHeaderText("Elige un entrenador para tu sesión:");
                     dialog.setContentText("Entrenador:");
-                    java.util.Optional<String> sel = dialog.showAndWait();
-                    if (sel.isPresent()) {
-                        int idx = opciones.indexOf(sel.get());
-                        if (idx >= 0) entrenadorAsignado = entrenadores.get(idx);
-                    } else {
-                        // Usuario canceló la selección
+                    dialog.showAndWait().ifPresent(sel -> {
+                        Entrenador elegido = mapa.get(sel);
+                        if (elegido != null) {
+                            entrenadorAsignado = elegido;
+                            lblEntrenadorSeleccionado.setText("✅ Entrenador asignado: " + safe(entrenadorAsignado.getNombre())
+                                    + " (" + safe(entrenadorAsignado.getEspecialidad()) + ")");
+                        }
+                    });
+                    // Si el diálogo fue cancelado y no se eligió, marcar que no se quiere entrenador
+                    if (entrenadorAsignado == null) {
                         quiereEntrenador = false;
-                        lblEntrenadorSeleccionado.setText("Selección de entrenador cancelada.");
-                        btnSinEntrenador.setStyle("-fx-background-color: #888; -fx-text-fill: white; -fx-border-color: #888; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand;");
-                        btnConEntrenador.setStyle("-fx-background-color: white; -fx-border-color: #E85D04; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand; -fx-text-fill: #E85D04;");
-                        actualizarResumen();
-                        return;
+                        lblEntrenadorSeleccionado.setText("Sin entrenador seleccionado.");
                     }
-                }
-
-                if (entrenadorAsignado != null) {
-                    lblEntrenadorSeleccionado.setText("✅ Entrenador asignado: " + safe(entrenadorAsignado.getNombre())
-                            + " (" + safe(entrenadorAsignado.getEspecialidad()) + ")");
                 }
             } else {
                 lblEntrenadorSeleccionado.setText("⚠ No hay entrenadores disponibles para esta instalación.");
@@ -616,12 +626,14 @@ public class Dashboardusuariocontroller implements Initializable {
         mapaPiscinaActual = piscina;
         int totalCarriles = piscina.getNumeroCarriles();
 
+        // ── Build the popup ──────────────────────────────────────────────────
         mapaPiscinaStage = new Stage();
         mapaPiscinaStage.initModality(Modality.APPLICATION_MODAL);
         mapaPiscinaStage.initStyle(StageStyle.DECORATED);
         mapaPiscinaStage.setTitle("🏊  Mapa de Piscina Olímpica — Carriles");
         mapaPiscinaStage.setResizable(false);
 
+        // Canvas dimensions
         int laneW    = 80;
         int laneH    = 340;
         int padding  = 40;
@@ -632,6 +644,7 @@ public class Dashboardusuariocontroller implements Initializable {
         mapaPiscinaCanvas = new Canvas(canvasW, canvasH);
         dibujarMapaPiscina(mapaPiscinaActual, mapaPiscinaCanvas);
 
+        // Close button
         Button btnClose = new Button("Cerrar");
         btnClose.setStyle("-fx-background-color: #E85D04; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 8 20; -fx-background-radius: 6; -fx-cursor: hand;");
         btnClose.setOnAction(e -> {
@@ -825,6 +838,7 @@ public class Dashboardusuariocontroller implements Initializable {
             lblDisponibilidad.setStyle("-fx-font-size: 11; -fx-text-fill: #C44D03;");
         }
         actualizarResumen();
+        // Also refresh lane occupancy
         actualizarOcupacionCarril();
     }
 
@@ -851,6 +865,7 @@ public class Dashboardusuariocontroller implements Initializable {
         if (fechaHora == null) return;
         int duracion = parseDuracion();
 
+        // Carril para piscina
         Integer carril = null;
         if (instalacionSeleccionada instanceof Piscina) {
             String carrilStr = cmbCarril.getValue();
@@ -868,6 +883,7 @@ public class Dashboardusuariocontroller implements Initializable {
             Turno nuevo = servicioTurnos.reservarTurno(
                     fechaHora, duracion, usuario, instActualizada, carril, usuario);
 
+            // Assign trainer if selected
             if (quiereEntrenador && entrenadorAsignado != null) {
                 try {
                     servicioAsignarEntrenador.asignarEntrenadorATurno(nuevo, entrenadorAsignado, usuario);
@@ -875,7 +891,7 @@ public class Dashboardusuariocontroller implements Initializable {
                     // Non-critical: turno created, trainer assignment logged
                 }
             }
-
+           
             lblErrorAgendar.setStyle("-fx-text-fill: #27ae60; -fx-font-size: 12;");
             String msgEntrenador = (quiereEntrenador && entrenadorAsignado != null)
                     ? " con entrenador " + entrenadorAsignado.getNombre() : "";
@@ -883,13 +899,15 @@ public class Dashboardusuariocontroller implements Initializable {
                     + fechaHora.format(FMT_DISPLAY) + msgEntrenador + ".");
 
             instalacionSeleccionada = instActualizada;
-            actualizarResumen();
-            actualizarOcupacionCarril();
-            cargarInicio();
+                actualizarResumen();
+                actualizarOcupacionCarril();
+                cargarInicio();
             refrescarMapaPiscinaAbierto();
 
+            // Si el usuario es ESTUDIANTE, no enviar a pasarela: agendar directamente
             String categoriaUsuario = usuario.getCategoria();
             if (categoriaUsuario != null && categoriaUsuario.trim().equalsIgnoreCase("ESTUDIANTE")) {
+                // Mensaje informativo ya mostrado arriba; evitar abrir la pasarela de pagos
                 lblErrorAgendar.setText(lblErrorAgendar.getText() + " (Usuario ESTUDIANTE: exento de pago)");
             } else {
                 abrirPasarelaPago(nuevo);
@@ -905,6 +923,7 @@ public class Dashboardusuariocontroller implements Initializable {
             lblErrorAgendar.setText("Error inesperado: " + ex.getMessage() + causa);
         }
     }
+
 
     @FXML
     private void onCancelarTurno() {
@@ -1053,9 +1072,7 @@ public class Dashboardusuariocontroller implements Initializable {
                     lblMsgTurnos.setText("Error BD - mostrando demo");
                 }
             }
-            turnosActivosBase.clear();
-            turnosActivosBase.addAll(turnos);
-            aplicarFiltroTurnos();
+            tablaTurnos.setItems(FXCollections.observableArrayList(turnos));
         } catch (Exception e) { e.printStackTrace(); }
     }
 
@@ -1080,9 +1097,7 @@ public class Dashboardusuariocontroller implements Initializable {
                     lblMsgHistorial.setText("Error BD: " + ex.getMessage());
                 }
             }
-            historialBase.clear();
-            historialBase.addAll(hist);
-            aplicarFiltroHistorial();
+            tablaHistorial.setItems(FXCollections.observableArrayList(hist));
             if (hist.isEmpty()) lblMsgHistorial.setText("No hay turnos en el historial.");
             else lblMsgHistorial.setText("");
         } catch (Exception e) { e.printStackTrace(); }
@@ -1104,63 +1119,52 @@ public class Dashboardusuariocontroller implements Initializable {
                     lblMsgPagos.setText("Error BD - mostrando demo");
                 }
             }
-            pagosBase.clear();
-            pagosBase.addAll(pagos);
-            aplicarFiltroPagos();
+            tablaPagos.setItems(FXCollections.observableArrayList(pagos));
         } catch (Exception e) { e.printStackTrace(); }
     }
 
-    private void aplicarFiltroTurnos() {
-        String filtro = txtBuscarTurno == null ? "" : txtBuscarTurno.getText();
-        List<Turno> filtrados = turnosActivosBase.stream()
-                .filter(t -> coincideTurno(t, filtro))
-                .collect(Collectors.toList());
-        tablaTurnos.setItems(FXCollections.observableArrayList(filtrados));
-        lblMsgTurnos.setText(filtrados.isEmpty() && !turnosActivosBase.isEmpty()
-                ? "No hay turnos que coincidan con la búsqueda." : lblMsgTurnos.getText());
+    // ─────────────────────────────────────────────────────────────────────────
+    //  BÚSQUEDAS / FILTRADO (Usuario)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private void filtrarTurnos(String texto) {
+        try {
+            if (texto == null || texto.trim().isEmpty()) { cargarMisTurnos(); return; }
+            String q = texto.trim();
+            Persona user = SesionActual.getUsuario();
+            List<Turno> all = (user == null || user.getId() == 0) ? crearTurnosDemo() : turnoDAO.listarPorUsuario(user.getId());
+            List<Turno> filtered = all.stream()
+                    .filter(t -> String.valueOf(t.getIdTurno()).contains(q))
+                    .collect(Collectors.toList());
+            tablaTurnos.setItems(FXCollections.observableArrayList(filtered));
+        } catch (Exception e) { tablaTurnos.setItems(FXCollections.observableArrayList()); }
     }
 
-    private void aplicarFiltroHistorial() {
-        String filtro = txtBuscarHistorial == null ? "" : txtBuscarHistorial.getText();
-        List<Turno> filtrados = historialBase.stream()
-                .filter(t -> coincideTurno(t, filtro))
-                .collect(Collectors.toList());
-        tablaHistorial.setItems(FXCollections.observableArrayList(filtrados));
-        if (filtrados.isEmpty() && !historialBase.isEmpty()) {
-            lblMsgHistorial.setText("No hay turnos que coincidan con la búsqueda.");
-        }
+    private void filtrarHistorial(String texto) {
+        try {
+            if (texto == null || texto.trim().isEmpty()) { cargarHistorial(); return; }
+            String q = texto.trim();
+            Persona user = SesionActual.getUsuario();
+            List<Turno> all = (user == null || user.getId() == 0) ? crearTurnosDemo().stream().filter(t -> !Turno.ESTADO_RESERVADO.equals(t.getEstado())).collect(Collectors.toList())
+                    : turnoDAO.listarPorUsuario(user.getId()).stream().filter(t -> !Turno.ESTADO_RESERVADO.equals(t.getEstado())).collect(Collectors.toList());
+            List<Turno> filtered = all.stream()
+                    .filter(t -> String.valueOf(t.getIdTurno()).contains(q))
+                    .collect(Collectors.toList());
+            tablaHistorial.setItems(FXCollections.observableArrayList(filtered));
+        } catch (Exception e) { tablaHistorial.setItems(FXCollections.observableArrayList()); }
     }
 
-    private void aplicarFiltroPagos() {
-        String filtro = txtBuscarPago == null ? "" : txtBuscarPago.getText();
-        List<Pago> filtrados = pagosBase.stream()
-                .filter(p -> coincidePago(p, filtro))
-                .collect(Collectors.toList());
-        tablaPagos.setItems(FXCollections.observableArrayList(filtrados));
-        if (filtrados.isEmpty() && !pagosBase.isEmpty()) {
-            lblMsgPagos.setText("No hay pagos que coincidan con la búsqueda.");
-        }
-    }
-
-    private boolean coincideTurno(Turno turno, String filtro) {
-        String texto = filtro == null ? "" : filtro.trim().toLowerCase();
-        if (texto.isEmpty()) return true;
-        return String.valueOf(turno.getIdTurno()).contains(texto)
-                || safe(turno.getEstado()).toLowerCase().contains(texto)
-                || safe(turno.getDuracionMinutos() + "").contains(texto)
-                || (turno.getInstalacion() != null && (
-                        safe(turno.getInstalacion().getTipo()).toLowerCase().contains(texto)
-                        || safe(turno.getInstalacion().getNombre()).toLowerCase().contains(texto)
-                        || safe(turno.getInstalacion().getNombreSede()).toLowerCase().contains(texto)
-                        || safe(turno.getInstalacion().getDireccionSede()).toLowerCase().contains(texto)))
-                || (turno.getFechaHora() != null && turno.getFechaHora().format(FMT_DISPLAY).toLowerCase().contains(texto))
-                || safe(turno.getNumeroCarrilAsignado() != null ? String.valueOf(turno.getNumeroCarrilAsignado()) : "").toLowerCase().contains(texto);
-    }
-
-    private boolean coincidePago(Pago pago, String filtro) {
-        String texto = filtro == null ? "" : filtro.trim().toLowerCase();
-        if (texto.isEmpty()) return true;
-        return String.valueOf(pago.getIdPago()).contains(texto);
+    private void filtrarPagos(String texto) {
+        try {
+            if (texto == null || texto.trim().isEmpty()) { cargarMisPagos(); return; }
+            String q = texto.trim();
+            Persona user = SesionActual.getUsuario();
+            List<Pago> all = (user == null || user.getId() == 0) ? crearPagosDemo() : pagoDAO.listarPorUsuario(user.getId());
+            List<Pago> filtered = all.stream()
+                    .filter(p -> String.valueOf(p.getIdPago()).contains(q) || String.valueOf(p.getIdTurno()).contains(q))
+                    .collect(Collectors.toList());
+            tablaPagos.setItems(FXCollections.observableArrayList(filtered));
+        } catch (Exception e) { tablaPagos.setItems(FXCollections.observableArrayList()); }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1281,11 +1285,4 @@ public class Dashboardusuariocontroller implements Initializable {
     }
 
     private String safe(String v) { return v != null ? v : "—"; }
-
-    @FXML
-    private void onVerReporte() {
-        if (lblMsgPagos != null) {
-            lblMsgPagos.setText("La función de reportes no está disponible en esta versión.");
-        }
-    }
 }
