@@ -548,9 +548,35 @@ public class Dashboardusuariocontroller implements Initializable {
                 entrenadores = entrenadorDAO.listar("", 10, 1);
             }
             if (entrenadores != null && !entrenadores.isEmpty()) {
-                entrenadorAsignado = entrenadores.get(0);
-                lblEntrenadorSeleccionado.setText("✅ Entrenador asignado: " + safe(entrenadorAsignado.getNombre())
-                        + " (" + safe(entrenadorAsignado.getEspecialidad()) + ")");
+                if (entrenadores.size() == 1) {
+                    entrenadorAsignado = entrenadores.get(0);
+                } else {
+                    List<String> opciones = entrenadores.stream()
+                            .map(e -> safe(e.getNombre()) + " (" + safe(e.getEspecialidad()) + ")")
+                            .collect(java.util.stream.Collectors.toList());
+                    ChoiceDialog<String> dialog = new ChoiceDialog<>(opciones.get(0), opciones);
+                    dialog.setTitle("Seleccionar entrenador");
+                    dialog.setHeaderText("Elige un entrenador para tu sesión:");
+                    dialog.setContentText("Entrenador:");
+                    java.util.Optional<String> sel = dialog.showAndWait();
+                    if (sel.isPresent()) {
+                        int idx = opciones.indexOf(sel.get());
+                        if (idx >= 0) entrenadorAsignado = entrenadores.get(idx);
+                    } else {
+                        // Usuario canceló la selección
+                        quiereEntrenador = false;
+                        lblEntrenadorSeleccionado.setText("Selección de entrenador cancelada.");
+                        btnSinEntrenador.setStyle("-fx-background-color: #888; -fx-text-fill: white; -fx-border-color: #888; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand;");
+                        btnConEntrenador.setStyle("-fx-background-color: white; -fx-border-color: #E85D04; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand; -fx-text-fill: #E85D04;");
+                        actualizarResumen();
+                        return;
+                    }
+                }
+
+                if (entrenadorAsignado != null) {
+                    lblEntrenadorSeleccionado.setText("✅ Entrenador asignado: " + safe(entrenadorAsignado.getNombre())
+                            + " (" + safe(entrenadorAsignado.getEspecialidad()) + ")");
+                }
             } else {
                 lblEntrenadorSeleccionado.setText("⚠ No hay entrenadores disponibles para esta instalación.");
                 quiereEntrenador = false;
