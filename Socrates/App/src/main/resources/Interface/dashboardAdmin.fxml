@@ -115,20 +115,26 @@
                         </TableView>
                     </VBox>
 
-                    <!-- ══════════════ PANEL TURNOS ══════════════ -->
+                                        <!-- ══════════════ PANEL TURNOS ══════════════ -->
                     <VBox fx:id="panelTurnos" managed="false" spacing="10" visible="false">
-                        <Label style="-fx-font-size: 18; -fx-font-weight: bold;" text="Turnos — Todos" />
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label style="-fx-font-size: 18; -fx-font-weight: bold;" text="Turnos — Todos" />
+                            <HBox HBox.hgrow="ALWAYS" />
+                            <TextField fx:id="txtBuscarTurnoId" prefWidth="200" promptText="Buscar por ID de turno..." style="-fx-background-radius: 6; -fx-padding: 6 10;" />
+                            <Button onAction="#buscarTurnoPorId" style="-fx-background-color: #E85D04; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 6 14; -fx-background-radius: 6;" text="Buscar" />
+                            <Button onAction="#limpiarFiltroTurnos" style="-fx-background-color: #aaa; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 6 14; -fx-background-radius: 6;" text="Limpiar" />
+                        </HBox>
                         <Label fx:id="lblMsgTurnos" style="-fx-text-fill: gray; -fx-font-size: 11;" />
                         <TableView fx:id="tablaTurnos" prefHeight="420">
                             <columns>
-                                <TableColumn fx:id="colTurnoId" prefWidth="50" text="ID" />
-                                <TableColumn fx:id="colTurnoFecha" prefWidth="140" text="Fecha / Hora" />
-                                <TableColumn fx:id="colTurnoDuracion" prefWidth="80" text="Duración" />
-                                <TableColumn fx:id="colTurnoInstalacion" prefWidth="110" text="Instalación" />
-                                <TableColumn fx:id="colTurnoCapacidad" prefWidth="80" text="Capacidad" />
-                                <TableColumn fx:id="colTurnoEstado" prefWidth="90" text="Estado" />
-                                <TableColumn fx:id="colTurnoUsuario" prefWidth="140" text="Usuario" />
-                                <TableColumn fx:id="colTurnoAcciones" prefWidth="90" text="Acción" />
+                                <TableColumn fx:id="colTurnoId" prefWidth="60" text="ID" />
+                                <TableColumn fx:id="colTurnoFecha" prefWidth="180" text="Fecha / Hora" />
+                                <TableColumn fx:id="colTurnoDuracion" prefWidth="90" text="Duración" />
+                                <TableColumn fx:id="colTurnoInstalacion" prefWidth="140" text="Instalación" />
+                                <TableColumn fx:id="colTurnoCapacidad" prefWidth="90" text="Capacidad" />
+                                <TableColumn fx:id="colTurnoEstado" prefWidth="100" text="Estado" />
+                                <TableColumn fx:id="colTurnoUsuario" prefWidth="160" text="Usuario" />
+                                <TableColumn fx:id="colTurnoAcciones" prefWidth="120" text="Acciones" />
                             </columns>
                         </TableView>
                     </VBox>
@@ -144,25 +150,32 @@
                                 <TableColumn fx:id="colInstalacionTipo" prefWidth="100" text="Tipo" />
                                 <TableColumn fx:id="colInstalacionCapacidad" prefWidth="90" text="Capacidad" />
                                 <TableColumn fx:id="colInstalacionAforo" prefWidth="90" text="Disponible" />
+                                <TableColumn fx:id="colInstalacionSede" prefWidth="160" text="Sede" />
                                 <TableColumn fx:id="colInstalacionEstado" prefWidth="90" text="Estado" />
                                 <TableColumn fx:id="colInstalacionAcciones" prefWidth="160" text="Acciones" />
                             </columns>
                         </TableView>
                     </VBox>
 
-                    <!-- ══════════════ PANEL PAGOS ══════════════ -->
+                                        <!-- ══════════════ PANEL PAGOS ══════════════ -->
                     <VBox fx:id="panelPagos" managed="false" spacing="10" visible="false">
-                        <Label style="-fx-font-size: 18; -fx-font-weight: bold;" text="Pagos — Todos" />
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label style="-fx-font-size: 18; -fx-font-weight: bold;" text="Pagos — Todos" />
+                            <HBox HBox.hgrow="ALWAYS" />
+                            <TextField fx:id="txtBuscarPagoId" prefWidth="200" promptText="Buscar por ID de pago..." style="-fx-background-radius: 6; -fx-padding: 6 10;" />
+                            <Button onAction="#buscarPagoPorId" style="-fx-background-color: #E85D04; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 6 14; -fx-background-radius: 6;" text="Buscar" />
+                            <Button onAction="#limpiarFiltroPagos" style="-fx-background-color: #aaa; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 6 14; -fx-background-radius: 6;" text="Limpiar" />
+                        </HBox>
                         <Label fx:id="lblMsgPagos" style="-fx-text-fill: gray; -fx-font-size: 11;" />
                         <TableView fx:id="tablaPagos" prefHeight="400">
                             <columns>
-                                <TableColumn fx:id="colPagoId" prefWidth="60" text="ID" />
-                                <TableColumn fx:id="colPagoTurno" prefWidth="70" text="Turno" />
-                                <TableColumn fx:id="colPagoUsuario" prefWidth="80" text="Usuario" />
-                                <TableColumn fx:id="colPagoMonto" prefWidth="110" text="Monto" />
-                                <TableColumn fx:id="colPagoMetodo" prefWidth="110" text="Método" />
+                                <TableColumn fx:id="colPagoId" prefWidth="80" text="ID" />
+                                <TableColumn fx:id="colPagoTurno" prefWidth="100" text="Turno" />
+                                <TableColumn fx:id="colPagoUsuario" prefWidth="120" text="Usuario" />
+                                <TableColumn fx:id="colPagoMonto" prefWidth="120" text="Monto" />
+                                <TableColumn fx:id="colPagoMetodo" prefWidth="120" text="Método" />
                                 <TableColumn fx:id="colPagoEstado" prefWidth="100" text="Estado" />
-                                <TableColumn fx:id="colPagoFecha" prefWidth="150" text="Fecha" />
+                                <TableColumn fx:id="colPagoFecha" prefWidth="160" text="Fecha" />
                             </columns>
                         </TableView>
                     </VBox>
