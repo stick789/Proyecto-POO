@@ -1,14 +1,18 @@
 package dao;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 import database.Conexion;
 import entidades.Gimnasio;
 import entidades.Instalacion;
 import entidades.Piscina;
-
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * InstalacionDAO — Acceso a datos de instalaciones.
@@ -72,6 +76,12 @@ public class InstalacionDAO implements IInstalacionDAO {
 
     @Override
     public void insertar(Instalacion instalacion) {
+        if (instalacion.getCapacidadMaxima() > 30) {
+            throw new IllegalArgumentException("Capacidad máxima permitida: 30 personas. Se ingresó: " + instalacion.getCapacidadMaxima());
+        }
+        if (instalacion.getCapacidadMaxima() < 1) {
+            throw new IllegalArgumentException("La capacidad debe ser mayor a 0.");
+        }
         Connection con = conexion.conectar();
         if (con == null) return;
 
@@ -162,6 +172,12 @@ public class InstalacionDAO implements IInstalacionDAO {
 
     @Override
     public void actualizar(Instalacion instalacion) {
+        if (instalacion.getCapacidadMaxima() > 30) {
+            throw new IllegalArgumentException("Capacidad máxima permitida: 30 personas. Se ingresó: " + instalacion.getCapacidadMaxima());
+        }
+        if (instalacion.getCapacidadMaxima() < 1) {
+            throw new IllegalArgumentException("La capacidad debe ser mayor a 0.");
+        }
         Connection con = conexion.conectar();
         if (con == null) return;
 
