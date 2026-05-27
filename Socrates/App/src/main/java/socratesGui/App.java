@@ -79,15 +79,17 @@ public class App extends Application {
     if (esDashboard) {
         scene = new Scene(root, 1280, 800);
         primaryStage.setScene(scene);
-        primaryStage.setWidth(1280);
-        primaryStage.setHeight(800);
+        
+        
         primaryStage.setResizable(true);
+        primaryStage.sizeToScene();
     } else {
         scene = new Scene(root, 640, 730);
         primaryStage.setScene(scene);
-        primaryStage.setWidth(640);
-        primaryStage.setHeight(730);
+        
+        
         primaryStage.setResizable(false);
+        primaryStage.sizeToScene();
     }
 
     primaryStage.centerOnScreen();
