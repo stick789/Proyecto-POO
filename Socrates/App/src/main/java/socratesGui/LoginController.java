@@ -1,12 +1,14 @@
 package socratesGui;
 
 import java.io.IOException;
+import java.util.UUID;
+
 import dao.PersonaDAO;
 import entidades.Administrador;
-import negocio.PersonaControl;
 import entidades.Persona;
 import entidades.Usuario;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -16,7 +18,9 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.concurrent.Task;
+import negocio.PersonaControl;
+import service.GoogleOAuthService;
+import service.GoogleOAuthService.GoogleProfile;
 
 /**
  * LoginController — Controlador del formulario de login.
@@ -34,6 +38,7 @@ public class LoginController {
     @FXML private Label         lblError;
 
     private final PersonaDAO personaDAO = new PersonaDAO();
+    private final GoogleOAuthService googleOAuthService = new GoogleOAuthService();
 
     // ── Credenciales demo ─────────────────────────────────────────────────────
     private static final String DEMO_ADMIN_EMAIL   = "admin@demo.com";
@@ -42,36 +47,68 @@ public class LoginController {
     private static final String DEMO_USUARIO_PASS  = "user123";
 
     @FXML
-private void onLogin() {
-    lblError.setText("");
-    String email = txtEmail.getText().trim();
-    String clave  = txtContrasena.getText();
+    private void onLogin() {
+        String email = txtEmail.getText() != null ? txtEmail.getText().trim() : "";
+        String clave = txtContrasena.getText() != null ? txtContrasena.getText() : "";
 
-    if (email.isEmpty() || clave.isEmpty()) {
-        lblError.setText("Ingresa tu correo y contraseña.");
-        return;
+        if (email.isBlank() || clave.isBlank()) {
+            lblError.setText("Ingrese correo y contraseña.");
+            return;
+        }
+
+        Persona demo = intentarLoginDemo(email, clave);
+        if (demo != null) {
+            SesionActual.setUsuario(demo);
+            navegarSegunRol(demo);
+            return;
+        }
+
+        lblError.setText("Validando credenciales...");
+
+        Task<Persona> taskLogin = new Task<>() {
+            @Override
+            protected Persona call() {
+                PersonaControl control = new PersonaControl(personaDAO);
+                if (!"1".equals(control.login(email, clave))) {
+                    return null;
+                }
+                return personaDAO.buscarPorEmail(email).orElse(null);
+            }
+        };
+
+        taskLogin.setOnSucceeded(e -> {
+            Persona persona = taskLogin.getValue();
+            if (persona == null) {
+                lblError.setText("Correo o contraseña incorrectos.");
+                return;
+            }
+
+            SesionActual.setUsuario(persona);
+            navegarSegunRol(persona);
+        });
+
+        taskLogin.setOnFailed(e -> {
+            String msg = taskLogin.getException() != null ? taskLogin.getException().getMessage() : null;
+            lblError.setText(msg != null ? msg : "Error de conexión.");
+        });
+
+        Thread hiloLogin = new Thread(taskLogin);
+        hiloLogin.setDaemon(true);
+        hiloLogin.start();
     }
 
-    // ── 1. Intentar login demo (sin BD) ──────────────────────
-    Persona personaDemo = intentarLoginDemo(email, clave);
-    if (personaDemo != null) {
-        SesionActual.setUsuario(personaDemo);
-        navegarSegunRol(personaDemo);
-        return;
-    }
-
-    // ── 2. Login real contra la BD ────────────────────────────
-    lblError.setText("Iniciando sesión...");
+    private void iniciarSesionGoogle() {
+    lblError.setText("Abriendo Google...");
 
     Task<Persona> taskLogin = new Task<>() {
         @Override
         protected Persona call() throws Exception {
-            String resultado = new PersonaControl().login(email, clave);
-            if (!resultado.equals("1")) {
-                boolean existe = personaDAO.buscarPorEmail(email).isPresent();
-                throw new Exception(existe ? "Contraseña incorrecta." : "Correo no registrado.");
+            GoogleProfile profile = googleOAuthService.autenticar(App.getAppHostServices());
+            Persona personaGoogle = resolverOCrearPersonaGoogle(profile);
+            if (personaGoogle == null) {
+                throw new IllegalStateException("No se pudo resolver la cuenta Google.");
             }
-            return personaDAO.buscarPorEmail(email).get();
+            return personaGoogle;
         }
     };
 
@@ -84,13 +121,59 @@ private void onLogin() {
     taskLogin.setOnFailed(ev -> {
         String msg = taskLogin.getException().getMessage();
         lblError.setText(msg != null ? msg : "Error de conexión.");
-        txtContrasena.clear();
     });
 
     Thread hiloLogin = new Thread(taskLogin);
     hiloLogin.setDaemon(true);
     hiloLogin.start();
 }
+
+    @FXML
+    private void onLoginGoogle() {
+        iniciarSesionGoogle();
+    }
+
+    private Persona resolverOCrearPersonaGoogle(GoogleProfile profile) throws Exception {
+        if (profile == null || profile.getEmail() == null || profile.getEmail().isBlank()) {
+            throw new IllegalArgumentException("Google no devolvió un correo válido.");
+        }
+
+        Persona existente = personaDAO.buscarPorEmail(profile.getEmail()).orElse(null);
+        if (existente != null) {
+            return existente;
+        }
+
+        String nombre = (profile.getName() != null && !profile.getName().isBlank())
+                ? profile.getName()
+                : profile.getEmail();
+
+        Usuario nuevoUsuario = new Usuario(
+                0,
+                nombre,
+                profile.getEmail(),
+                "GOOGLE",
+                profile.getGoogleId(),
+                false,
+                null
+        );
+
+        String resultado = new PersonaControl(personaDAO).registrar(nuevoUsuario, UUID.randomUUID().toString());
+        if ("OK".equals(resultado)) {
+            Persona creado = personaDAO.buscarPorEmail(profile.getEmail()).orElse(null);
+            if (creado != null) {
+                return creado;
+            }
+        }
+
+        if ("EMAIL_DUPLICADO".equals(resultado)) {
+            Persona duplicado = personaDAO.buscarPorEmail(profile.getEmail()).orElse(null);
+            if (duplicado != null) {
+                return duplicado;
+            }
+        }
+
+        throw new IllegalStateException("No se pudo crear o cargar la cuenta de Google.");
+    }
 
     /**
      * Devuelve un Persona demo si las credenciales coinciden, o null si no es demo.

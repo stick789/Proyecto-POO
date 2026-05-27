@@ -11,10 +11,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="TOP_CENTER" prefHeight="730.0" prefWidth="920.0" spacing="10.0"
-      xmlns="http://javafx.com/javafx/25"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="socratesGui.LoginController">
+<VBox alignment="TOP_CENTER" prefHeight="730.0" prefWidth="920.0" spacing="10.0" xmlns="http://javafx.com/javafx/25" xmlns:fx="http://javafx.com/fxml/1" fx:controller="socratesGui.LoginController">
 
    <children>
 
@@ -29,9 +26,7 @@
       </Label>
 
       <!-- Botón Ingresa con Compensar -->
-      <Button fx:id="primaryButton" contentDisplay="RIGHT" graphicTextGap="3.0"
-              onAction="#onLoginCompensar"
-              prefHeight="72.0" prefWidth="169.0" text="Ingresa con ">
+      <Button fx:id="primaryButton" contentDisplay="RIGHT" graphicTextGap="3.0" onAction="#onLoginCompensar" prefHeight="72.0" prefWidth="169.0" text="Ingresa con ">
          <graphic>
             <ImageView fitHeight="95.0" fitWidth="82.0" pickOnBounds="true" preserveRatio="true">
                <image><Image url="@CompensarLogo2.png" /></image>
@@ -50,58 +45,26 @@
       <Separator prefWidth="260.0" />
 
       <!-- Campo correo -->
-      <Label text="Correo electrónico"
-             style="-fx-text-fill: #2E6B7A; -fx-font-weight: bold; -fx-font-size: 12px;" />
-      <TextField fx:id="txtEmail"
-                 promptText="usuario@compensar.com"
-                 prefWidth="260.0"
-                 style="-fx-background-color: white;
-                        -fx-border-color: #2E6B7A;
-                        -fx-border-radius: 6;
-                        -fx-background-radius: 6;
-                        -fx-padding: 7 10 7 10;
-                        -fx-font-size: 13px;" />
+      <Label style="-fx-text-fill: #2E6B7A; -fx-font-weight: bold; -fx-font-size: 12px;" text="Correo electrónico" />
+      <TextField fx:id="txtEmail" prefWidth="260.0" promptText="usuario@compensar.com" style="-fx-background-color: white;                         -fx-border-color: #2E6B7A;                         -fx-border-radius: 6;                         -fx-background-radius: 6;                         -fx-padding: 7 10 7 10;                         -fx-font-size: 13px;" />
 
       <!-- Campo contraseña -->
-      <Label text="Contraseña"
-             style="-fx-text-fill: #2E6B7A; -fx-font-weight: bold; -fx-font-size: 12px;" />
-      <PasswordField fx:id="txtContrasena"
-                     promptText="••••••••"
-                     prefWidth="260.0"
-                     style="-fx-background-color: white;
-                            -fx-border-color: #2E6B7A;
-                            -fx-border-radius: 6;
-                            -fx-background-radius: 6;
-                            -fx-padding: 7 10 7 10;
-                            -fx-font-size: 13px;" />
+      <Label style="-fx-text-fill: #2E6B7A; -fx-font-weight: bold; -fx-font-size: 12px;" text="Contraseña" />
+      <PasswordField fx:id="txtContrasena" prefWidth="260.0" promptText="••••••••" style="-fx-background-color: white;                             -fx-border-color: #2E6B7A;                             -fx-border-radius: 6;                             -fx-background-radius: 6;                             -fx-padding: 7 10 7 10;                             -fx-font-size: 13px;" />
 
       <!-- Mensaje de error -->
-      <Label fx:id="lblError" text=""
-             style="-fx-text-fill: #c0392b; -fx-font-size: 11px;"
-             wrapText="true" prefWidth="260.0" />
+      <Label fx:id="lblError" prefWidth="260.0" style="-fx-text-fill: #c0392b; -fx-font-size: 11px;" text="" wrapText="true" />
 
       <!-- Botones de acción -->
-        <Button mnemonicParsing="false"
-              prefHeight="30.0" prefWidth="130.0"
-              onAction="#onLogin"
-              style="-fx-background-color: #2E6B7A; -fx-text-fill: white;
-                     -fx-background-radius: 10; -fx-font-size: 13px;
-                     -fx-cursor: hand;"
-              text="Iniciar Sesión" />
+        <Button mnemonicParsing="false" onAction="#onLogin" prefHeight="30.0" prefWidth="130.0" style="-fx-background-color: #2E6B7A; -fx-text-fill: white;                      -fx-background-radius: 10; -fx-font-size: 13px;                      -fx-cursor: hand;" text="Iniciar Sesión" />
 
-      <Button mnemonicParsing="false"
-              prefHeight="30.0" prefWidth="130.0"
-              onAction="#onRegistrar"
-              style="-fx-background-color: #2E6B7A; -fx-text-fill: white;
-                     -fx-background-radius: 10; -fx-font-size: 13px; -fx-cursor: hand;"
-              text="Registrarse" />
+      <Button mnemonicParsing="false" onAction="#onRegistrar" prefHeight="30.0" prefWidth="130.0" style="-fx-background-color: #2E6B7A; -fx-text-fill: white;                      -fx-background-radius: 10; -fx-font-size: 13px; -fx-cursor: hand;" text="Registrarse" />
 
     
 
       
       <Label text="O" />
-      <Button mnemonicParsing="false"
-              style="-fx-background-color: #FFFFFF; -fx-border-color: #1E3A8A; -fx-border-radius: 6; -fx-background-radius: 6;">
+      <Button mnemonicParsing="false" onAction="#onLoginGoogle" style="-fx-background-color: #FFFFFF; -fx-border-color: #1E3A8A; -fx-border-radius: 6; -fx-background-radius: 6;">
          <graphic>
             <ImageView fitHeight="48.0" fitWidth="28.0" pickOnBounds="true" preserveRatio="true">
                <image><Image url="@GoogleIcon.png" /></image>
