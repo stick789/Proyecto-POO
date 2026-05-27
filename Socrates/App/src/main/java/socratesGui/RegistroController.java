@@ -1,7 +1,9 @@
 package socratesGui;
 
 import entidades.Usuario;
+import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -12,8 +14,6 @@ import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
-import javafx.application.Platform;
-import javafx.concurrent.Task;
 import negocio.PersonaControl;
 
 /**
@@ -168,7 +168,7 @@ public class RegistroController {
 
         Stage stageExito = new Stage();
         stageExito.setTitle("Registro exitoso — Sócrates");
-        stageExito.setScene(new Scene(root, 420, 320));
+        stageExito.setScene(new Scene(root, 420, 420));
         stageExito.setResizable(false);
         stageExito.initModality(Modality.WINDOW_MODAL);
         if (miStage != null) {
@@ -176,6 +176,7 @@ public class RegistroController {
         }
 
         // SIN setOnHidden — el cierre lo maneja RegistroExitosoController
+        stageExito.centerOnScreen();
         stageExito.show();
 
     } catch (Exception e) {
