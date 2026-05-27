@@ -406,12 +406,28 @@ public class Dashboardusuariocontroller implements Initializable {
      */
     private void mostrarSelectorInstalacion(String tipo) {
         List<Instalacion> opciones = listarInstalacionesPorTipo(tipo);
-
         if (opciones.isEmpty()) {
-            lblCapacidadInstalacion.setText(
-                "No hay " + tipo.toLowerCase() + "s registrados en tu sede.");
-            instalacionSeleccionada = null;
-            return;
+            // Fallback: si no hay instalaciones por sede, intentar listar globalmente
+            try {
+                List<Instalacion> global = "GIMNASIO".equals(tipo)
+                        ? instalacionDAO.listarGimnasios()
+                        : instalacionDAO.listarPiscinas();
+                if (global != null && !global.isEmpty()) {
+                    opciones = global;
+                    // Informar al usuario que mostramos instalaciones de todas las sedes
+                    lblCapacidadInstalacion.setText("Mostrando " + tipo.toLowerCase() + "s de todas las sedes (ninguno en tu sede).");
+                } else {
+                    lblCapacidadInstalacion.setText(
+                            "No hay " + tipo.toLowerCase() + "s registrados en tu sede.");
+                    instalacionSeleccionada = null;
+                    return;
+                }
+            } catch (Exception ex) {
+                lblCapacidadInstalacion.setText(
+                        "No hay " + tipo.toLowerCase() + "s registrados en tu sede.");
+                instalacionSeleccionada = null;
+                return;
+            }
         }
 
         if (opciones.size() == 1) {
@@ -568,9 +584,29 @@ private void abrirPasarelaPago(Turno turno) {
                 entrenadores = entrenadorDAO.listar("", 10, 1);
             }
             if (entrenadores != null && !entrenadores.isEmpty()) {
-                entrenadorAsignado = entrenadores.get(0);
-                lblEntrenadorSeleccionado.setText("✅ Entrenador asignado: " + safe(entrenadorAsignado.getNombre())
-                        + " (" + safe(entrenadorAsignado.getEspecialidad()) + ")");
+                // Mostrar ChoiceDialog para que el usuario seleccione un entrenador
+                List<String> opciones = new ArrayList<>();
+                for (Entrenador e : entrenadores) {
+                    opciones.add(safe(e.getNombre()) + " (" + safe(e.getEspecialidad()) + ")");
+                }
+                ChoiceDialog<String> dlg = new ChoiceDialog<>(opciones.get(0), opciones);
+                dlg.setTitle("Seleccionar entrenador");
+                dlg.setHeaderText("Elige un entrenador para la sesión");
+                dlg.setContentText("Entrenador:");
+                java.util.Optional<String> opt = dlg.showAndWait();
+                if (opt.isPresent()) {
+                    String elegido = opt.get();
+                    int idx = opciones.indexOf(elegido);
+                    if (idx >= 0) {
+                        entrenadorAsignado = entrenadores.get(idx);
+                        lblEntrenadorSeleccionado.setText("✅ Entrenador asignado: " + safe(entrenadorAsignado.getNombre())
+                                + " (" + safe(entrenadorAsignado.getEspecialidad()) + ")");
+                    }
+                } else {
+                    // El usuario canceló el diálogo: mantener estado como "solicitado" pero sin asignar
+                    lblEntrenadorSeleccionado.setText("⚠ Selección de entrenador cancelada.");
+                    quiereEntrenador = false;
+                }
             } else {
                 lblEntrenadorSeleccionado.setText("⚠ No hay entrenadores disponibles para esta instalación.");
                 quiereEntrenador = false;
