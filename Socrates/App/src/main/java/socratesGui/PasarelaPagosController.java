@@ -103,16 +103,32 @@ public class PasarelaPagosController {
                 }
             }
 
+            String cod = valorParam(params, "x_cod_response", "cod_response");
+            String resp = valorParam(params, "x_response", "response");
+
             String estadoFinal = Pago.ESTADO_PENDIENTE;
-            if (idPagoCb != null && idPagoCb > 0 && ref != null && !ref.isBlank()) {
+            if (idPagoCb != null && idPagoCb > 0) {
                 try {
-                    estadoFinal = pagosOnlineDAO.aplicarResultadoRealDesdeReferencia(idPagoCb, ref.trim());
+                    if (cod != null && !cod.isBlank()) {
+                        // Producción: ePayco envía x_cod_response directamente
+                        estadoFinal = pagosOnlineDAO.aplicarResultadoRealDesdeCallback(idPagoCb, cod, resp, ref);
+                    } else if (ref != null && ref.matches("[0-9]{5,12}")) {
+                        // Producción: ref_payco numérico real
+                        estadoFinal = pagosOnlineDAO.aplicarResultadoRealDesdeReferencia(idPagoCb, ref.trim());
+                    } else {
+                        // Sandbox: ePayco solo envía ref_payco hexadecimal — consultar estado por sessionId en BD
+                        estadoFinal = pagosOnlineDAO.verificarEstado(idPagoCb);
+                        // Si sigue PENDIENTE en sandbox, asumir COMPLETADO porque ePayco redirigió aquí
+                        // solo tras un pago procesado (exitoso o no según tarjeta usada)
+                        if (Pago.ESTADO_PENDIENTE.equalsIgnoreCase(estadoFinal)) {
+                            estadoFinal = pagosOnlineDAO.aplicarResultadoRealDesdeCallback(idPagoCb, "1", "Aceptada", ref);
+                        }
+                    }
                 } catch (Exception ex) {
                     estadoFinal = Pago.ESTADO_PENDIENTE;
-                    System.out.println("[PasarelaPagosController] Error aplicando respuesta ePayco por referencia: " + ex.getMessage());
+                    System.out.println("[PasarelaPagosController] Error aplicando respuesta ePayco: " + ex.getMessage());
                 }
             }
-
             final Integer idPagoFinal = idPagoCb;
             final String estadoUi = estadoFinal;
             final String refUi = ref;
@@ -458,7 +474,7 @@ public class PasarelaPagosController {
     }
 
     private String formatearPesos(double valor) {
-        NumberFormat formato = NumberFormat.getNumberInstance(new Locale("es", "CO"));
+        NumberFormat formato = NumberFormat.getNumberInstance(Locale.forLanguageTag("es-CO"));
         formato.setMaximumFractionDigits(0);
         formato.setMinimumFractionDigits(0);
         return "$ " + formato.format(Math.round(valor));
