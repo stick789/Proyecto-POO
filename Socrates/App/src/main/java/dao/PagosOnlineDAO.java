@@ -153,10 +153,11 @@ public class PagosOnlineDAO {
     }
 
     public String aplicarResultadoRealDesdeReferencia(int idPago, String refPayco) throws Exception {
-        if (refPayco == null || refPayco.isBlank()) {
+        // ref_payco de ePayco es siempre numérico — rechazar sessionIds hexadecimales
+        if (refPayco == null || refPayco.isBlank() || !refPayco.matches("[0-9]{5,12}")) {
+            System.out.println("[PagosOnlineDAO] refPayco inválido o es sessionId, se omite: " + refPayco);
             return Pago.ESTADO_PENDIENTE;
         }
-
         // ePayco puede tardar unos segundos en reflejar el estado final por referencia.
         // Reintentamos brevemente antes de dejarlo en PENDIENTE para evitar falsos pendientes.
         EpaycoStatusResult statusResult = null;
@@ -283,7 +284,8 @@ public class PagosOnlineDAO {
             raw = statusResult != null && statusResult.getEstado() != null ? statusResult.getEstado().trim() : "";
             System.out.println("[PagosOnlineDAO] estado crudo recibido de ePayco para idPago=" + idPago + ": " + raw);
             // Si la respuesta incluye ref_payco, guardarla
-            if (statusResult != null && statusResult.getRefPayco() != null && !statusResult.getRefPayco().isBlank()) {
+           if (statusResult != null && statusResult.getRefPayco() != null
+                    && statusResult.getRefPayco().matches("[0-9]{5,12}")) {
                 try {
                     pagoDAO.actualizarRefPayco(idPago, statusResult.getRefPayco());
                 } catch (Exception e) {
