@@ -158,8 +158,7 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private TableColumn<Pago, String>  colPagoFecha;
     @FXML private Label                      lblMsgPagos;
     @FXML private TextField                  txtBuscarPago;
-
-    // ── Guardado de datos para filtrado por ID ───────────────────────────────
+// ── Guardado de datos para filtrado por ID ───────────────────────────────
     private final List<Turno> turnosActivosBase = new ArrayList<>();
     private final List<Turno> historialBase = new ArrayList<>();
     private final List<Pago> pagosBase = new ArrayList<>();
@@ -182,6 +181,7 @@ public class Dashboardusuariocontroller implements Initializable {
     private ConsultaTurnos  consultaTurnos;
     private ServicioTurnos  servicioTurnos;
     private ServicioAsignarEntrenador servicioAsignarEntrenador;
+    
 
     // ─────────────────────────────────────────────────────────────────────────
     //  INITIALIZE
@@ -226,9 +226,6 @@ public class Dashboardusuariocontroller implements Initializable {
 
             // Buscadores de tablas
             inicializarBuscadores();
-
-            // Completar automáticamente turnos vencidos antes de mostrar datos
-            sincronizarTurnosVencidos();
 
             // Cargar inicio
             cargarInicio();
@@ -409,12 +406,28 @@ public class Dashboardusuariocontroller implements Initializable {
      */
     private void mostrarSelectorInstalacion(String tipo) {
         List<Instalacion> opciones = listarInstalacionesPorTipo(tipo);
-
         if (opciones.isEmpty()) {
-            lblCapacidadInstalacion.setText(
-                "No hay " + tipo.toLowerCase() + "s registrados en tu sede.");
-            instalacionSeleccionada = null;
-            return;
+            // Fallback: si no hay instalaciones por sede, intentar listar globalmente
+            try {
+                List<Instalacion> global = "GIMNASIO".equals(tipo)
+                        ? instalacionDAO.listarGimnasios()
+                        : instalacionDAO.listarPiscinas();
+                if (global != null && !global.isEmpty()) {
+                    opciones = global;
+                    // Informar al usuario que mostramos instalaciones de todas las sedes
+                    lblCapacidadInstalacion.setText("Mostrando " + tipo.toLowerCase() + "s de todas las sedes (ninguno en tu sede).");
+                } else {
+                    lblCapacidadInstalacion.setText(
+                            "No hay " + tipo.toLowerCase() + "s registrados en tu sede.");
+                    instalacionSeleccionada = null;
+                    return;
+                }
+            } catch (Exception ex) {
+                lblCapacidadInstalacion.setText(
+                        "No hay " + tipo.toLowerCase() + "s registrados en tu sede.");
+                instalacionSeleccionada = null;
+                return;
+            }
         }
 
         if (opciones.size() == 1) {
@@ -571,9 +584,29 @@ private void abrirPasarelaPago(Turno turno) {
                 entrenadores = entrenadorDAO.listar("", 10, 1);
             }
             if (entrenadores != null && !entrenadores.isEmpty()) {
-                entrenadorAsignado = entrenadores.get(0);
-                lblEntrenadorSeleccionado.setText("✅ Entrenador asignado: " + safe(entrenadorAsignado.getNombre())
-                        + " (" + safe(entrenadorAsignado.getEspecialidad()) + ")");
+                // Mostrar ChoiceDialog para que el usuario seleccione un entrenador
+                List<String> opciones = new ArrayList<>();
+                for (Entrenador e : entrenadores) {
+                    opciones.add(safe(e.getNombre()) + " (" + safe(e.getEspecialidad()) + ")");
+                }
+                ChoiceDialog<String> dlg = new ChoiceDialog<>(opciones.get(0), opciones);
+                dlg.setTitle("Seleccionar entrenador");
+                dlg.setHeaderText("Elige un entrenador para la sesión");
+                dlg.setContentText("Entrenador:");
+                java.util.Optional<String> opt = dlg.showAndWait();
+                if (opt.isPresent()) {
+                    String elegido = opt.get();
+                    int idx = opciones.indexOf(elegido);
+                    if (idx >= 0) {
+                        entrenadorAsignado = entrenadores.get(idx);
+                        lblEntrenadorSeleccionado.setText("✅ Entrenador asignado: " + safe(entrenadorAsignado.getNombre())
+                                + " (" + safe(entrenadorAsignado.getEspecialidad()) + ")");
+                    }
+                } else {
+                    // El usuario canceló el diálogo: mantener estado como "solicitado" pero sin asignar
+                    lblEntrenadorSeleccionado.setText("⚠ Selección de entrenador cancelada.");
+                    quiereEntrenador = false;
+                }
             } else {
                 lblEntrenadorSeleccionado.setText("⚠ No hay entrenadores disponibles para esta instalación.");
                 quiereEntrenador = false;
@@ -960,7 +993,6 @@ private void abrirPasarelaPago(Turno turno) {
 
     private void cargarInicio() {
         try {
-            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Turno> turnos;
             List<Pago>  pagos;
@@ -1043,7 +1075,6 @@ private void abrirPasarelaPago(Turno turno) {
 
     private void cargarMisTurnos() {
         try {
-            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Turno> turnos;
             if (user == null || user.getId() == 0) {
@@ -1069,7 +1100,6 @@ private void abrirPasarelaPago(Turno turno) {
 
     private void cargarHistorial() {
         try {
-            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Turno> hist;
             if (user == null || user.getId() == 0) {
@@ -1099,7 +1129,6 @@ private void abrirPasarelaPago(Turno turno) {
 
     private void cargarMisPagos() {
         try {
-            sincronizarTurnosVencidos();
             Persona user = SesionActual.getUsuario();
             List<Pago> pagos;
             if (user == null || user.getId() == 0) {
@@ -1149,19 +1178,6 @@ private void abrirPasarelaPago(Turno turno) {
         tablaPagos.setItems(FXCollections.observableArrayList(filtrados));
         if (filtrados.isEmpty() && !pagosBase.isEmpty()) {
             lblMsgPagos.setText("No hay pagos que coincidan con la búsqueda.");
-        }
-    }
-
-    private void sincronizarTurnosVencidos() {
-        try {
-            if (servicioTurnos != null) {
-                java.util.List<Turno> upd = servicioTurnos.completarTurnosVencidos();
-                if (upd != null && !upd.isEmpty()) {
-                    lblMsgGlobal.setText("Se completaron automáticamente " + upd.size() + " turnos.");
-                }
-            }
-        } catch (Exception e) {
-            lblMsgGlobal.setText("No se pudo actualizar el estado automático de turnos: " + e.getMessage());
         }
     }
 
@@ -1423,4 +1439,3 @@ private void abrirPasarelaPago(Turno turno) {
         return is;
     }
 }
-
