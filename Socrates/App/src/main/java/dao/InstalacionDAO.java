@@ -76,12 +76,6 @@ public class InstalacionDAO implements IInstalacionDAO {
 
     @Override
     public void insertar(Instalacion instalacion) {
-        if (instalacion.getCapacidadMaxima() > 30) {
-            throw new IllegalArgumentException("Capacidad máxima permitida: 30 personas. Se ingresó: " + instalacion.getCapacidadMaxima());
-        }
-        if (instalacion.getCapacidadMaxima() < 1) {
-            throw new IllegalArgumentException("La capacidad debe ser mayor a 0.");
-        }
         Connection con = conexion.conectar();
         if (con == null) return;
 
@@ -172,12 +166,6 @@ public class InstalacionDAO implements IInstalacionDAO {
 
     @Override
     public void actualizar(Instalacion instalacion) {
-        if (instalacion.getCapacidadMaxima() > 30) {
-            throw new IllegalArgumentException("Capacidad máxima permitida: 30 personas. Se ingresó: " + instalacion.getCapacidadMaxima());
-        }
-        if (instalacion.getCapacidadMaxima() < 1) {
-            throw new IllegalArgumentException("La capacidad debe ser mayor a 0.");
-        }
         Connection con = conexion.conectar();
         if (con == null) return;
 

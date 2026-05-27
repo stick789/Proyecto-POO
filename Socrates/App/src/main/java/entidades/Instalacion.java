@@ -26,9 +26,6 @@ public abstract class Instalacion {
     public Instalacion(int idInstalacion, String tipo, int capacidadMaxima, int aforoActual) {
         this.idInstalacion   = idInstalacion;
         this.tipo            = validarTipo(tipo);
-        if (capacidadMaxima > 30) {
-            throw new IllegalArgumentException("Capacidad máxima permitida: 30 personas. Se ingresó: " + capacidadMaxima);
-        }
         this.capacidadMaxima = capacidadMaxima;
         this.aforoActual     = aforoActual;
     }
