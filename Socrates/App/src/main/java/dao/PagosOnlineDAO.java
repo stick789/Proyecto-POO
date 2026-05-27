@@ -384,23 +384,6 @@ public class PagosOnlineDAO {
         return Pago.ESTADO_PENDIENTE;
     }
 
-    private void marcarPagoComoFallido(Pago pago, int idPago, String detalle) {
-        try {
-            pagoDAO.actualizarEstado(idPago, Pago.ESTADO_FALLIDO);
-            cancelarTurnoAsociado(pago, idPago, detalle);
-            HistorialCitasDAO histDao = new HistorialCitasDAO();
-            Historial_citas h = new Historial_citas();
-            h.setIdTurno(String.valueOf(pago.getIdTurno()));
-            h.setIdUsuario(pago.getIdUsuario());
-            h.setIdInstalacion("0");
-            h.setEstado("FALLIDO");
-            h.setDetalle("Pago FALLIDO (idPago=" + idPago + ") - " + detalle);
-            histDao.insertar(h);
-        } catch (Exception ignore) {
-            // no interrumpimos el flujo por fallos al registrar el historial
-        }
-    }
-
     private void cancelarTurnoAsociado(Pago pago, int idPago, String detalle) {
         try {
             Turno turno = turnoDAO.buscarPorId(pago.getIdTurno()).orElse(null);

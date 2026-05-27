@@ -1,18 +1,13 @@
 package socratesGui;
-import java.io.File;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URL;
-import java.sql.Connection;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.stream.Collectors;
 
@@ -26,7 +21,6 @@ import dao.PagoDAO;
 import dao.PersonaDAO;
 import dao.SedeDAO;
 import dao.TurnoDAO;
-import database.Conexion;
 import entidades.Entrenador;
 import entidades.Gimnasio;
 import entidades.Instalacion;
@@ -66,11 +60,6 @@ import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.util.Duration;
 import negocio.PersonaControl;
-import net.sf.jasperreports.engine.JasperCompileManager;
-import net.sf.jasperreports.engine.JasperFillManager;
-import net.sf.jasperreports.engine.JasperPrint;
-import net.sf.jasperreports.engine.JasperReport;
-import net.sf.jasperreports.view.JasperViewer;
 
 public class Dashboardusuariocontroller implements Initializable {
 
@@ -158,7 +147,8 @@ public class Dashboardusuariocontroller implements Initializable {
     @FXML private TableColumn<Pago, String>  colPagoFecha;
     @FXML private Label                      lblMsgPagos;
     @FXML private TextField                  txtBuscarPago;
-// ── Guardado de datos para filtrado por ID ───────────────────────────────
+
+    // ── Guardado de datos para filtrado por ID ───────────────────────────────
     private final List<Turno> turnosActivosBase = new ArrayList<>();
     private final List<Turno> historialBase = new ArrayList<>();
     private final List<Pago> pagosBase = new ArrayList<>();
@@ -181,7 +171,7 @@ public class Dashboardusuariocontroller implements Initializable {
     private ConsultaTurnos  consultaTurnos;
     private ServicioTurnos  servicioTurnos;
     private ServicioAsignarEntrenador servicioAsignarEntrenador;
-    
+
 
     // ─────────────────────────────────────────────────────────────────────────
     //  INITIALIZE
@@ -400,41 +390,20 @@ public class Dashboardusuariocontroller implements Initializable {
      * Carga las instalaciones del tipo dado que pertenecen a la sede del usuario.
      * Si hay más de una, abre un ChoiceDialog para que el usuario elija.
      * Si solo hay una, la selecciona directamente.
-     *
-     * Como la sesión todavía no almacena una sede propia, se agregan las
-     * instalaciones de todas las sedes registradas para no ocultar sedes nuevas.
      */
     private void mostrarSelectorInstalacion(String tipo) {
         List<Instalacion> opciones = listarInstalacionesPorTipo(tipo);
+
         if (opciones.isEmpty()) {
-            // Fallback: si no hay instalaciones por sede, intentar listar globalmente
-            try {
-                List<Instalacion> global = "GIMNASIO".equals(tipo)
-                        ? instalacionDAO.listarGimnasios()
-                        : instalacionDAO.listarPiscinas();
-                if (global != null && !global.isEmpty()) {
-                    opciones = global;
-                    // Informar al usuario que mostramos instalaciones de todas las sedes
-                    lblCapacidadInstalacion.setText("Mostrando " + tipo.toLowerCase() + "s de todas las sedes (ninguno en tu sede).");
-                } else {
-                    lblCapacidadInstalacion.setText(
-                            "No hay " + tipo.toLowerCase() + "s registrados en tu sede.");
-                    instalacionSeleccionada = null;
-                    return;
-                }
-            } catch (Exception ex) {
-                lblCapacidadInstalacion.setText(
-                        "No hay " + tipo.toLowerCase() + "s registrados en tu sede.");
-                instalacionSeleccionada = null;
-                return;
-            }
+            lblCapacidadInstalacion.setText(
+                "No hay " + tipo.toLowerCase() + "s registrados en tu sede.");
+            instalacionSeleccionada = null;
+            return;
         }
 
         if (opciones.size() == 1) {
-            // Solo una opción — selección directa, sin diálogo
             aplicarSeleccionInstalacion(opciones.get(0), tipo);
         } else {
-            // Varias opciones — el usuario elige
             ChoiceDialog<Instalacion> dialog =
                     new ChoiceDialog<>(opciones.get(0), opciones);
             dialog.setTitle("Seleccionar instalación");
@@ -446,7 +415,6 @@ public class Dashboardusuariocontroller implements Initializable {
 
     /**
      * Reúne instalaciones del tipo solicitado en todas las sedes registradas.
-     * Esto evita que una sede nueva quede fuera si la sesión aún no conoce su id.
      */
     private List<Instalacion> listarInstalacionesPorTipo(String tipo) {
         List<Instalacion> opciones = new ArrayList<>();
@@ -527,33 +495,31 @@ public class Dashboardusuariocontroller implements Initializable {
         quiereEntrenador = false;
         entrenadorAsignado = null;
         lblEntrenadorSeleccionado.setText("");
-        // Reset coach button styles
         btnConEntrenador.setStyle("-fx-background-color: white; -fx-border-color: #E85D04; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand; -fx-text-fill: #E85D04;");
         btnSinEntrenador.setStyle("-fx-background-color: white; -fx-border-color: #aaa; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand; -fx-text-fill: #555;");
         panelEntrenador.setVisible(true);
         panelEntrenador.setManaged(true);
     }
-private void abrirPasarelaPago(Turno turno) {
+
+    private void abrirPasarelaPago(Turno turno) {
         try {
-            //Cargar FMXL
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/Interface/pasarelaPagos.fxml"));
             Parent root = loader.load();
 
             PasarelaPagosController controller = loader.getController();
-            // Pasar el turno - iniciara automaticamente el proceso de pago
             controller.setTurno(turno);
-            // Pasar HostServices para poder abrir el navegador desde el controlador
             controller.setHostServices(App.getAppHostServices());
-            //Configurar y mostrar ventana modal
+
             Stage stage = new Stage();
             stage.setTitle("Pasarela de Pagos - Turno #" + turno.getIdTurno());
             stage.setScene(new Scene(root));
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.show();
-        }catch (Exception e) {
+        } catch (Exception e) {
             mostrarAlerta("Error", "No se pudo abrir la pasarela de pagos: " + e.getMessage());
         }
     }
+
     private void mostrarAlerta(String titulo, String mensaje) {
         Alert alerta = new Alert(Alert.AlertType.ERROR);
         alerta.initStyle(StageStyle.UTILITY);
@@ -573,40 +539,18 @@ private void abrirPasarelaPago(Turno turno) {
         btnConEntrenador.setStyle("-fx-background-color: #E85D04; -fx-text-fill: white; -fx-border-color: #E85D04; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand;");
         btnSinEntrenador.setStyle("-fx-background-color: white; -fx-border-color: #aaa; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 12; -fx-cursor: hand; -fx-text-fill: #555;");
 
-        // Filter coaches by the selected installation type
         String especialidad = "PISCINA".equals(instalacionSeleccionada.getTipo())
             ? "Natación" : "Gimnasio";
 
         try {
             List<Entrenador> entrenadores = entrenadorDAO.listarPorEspecialidad(especialidad);
             if (entrenadores == null || entrenadores.isEmpty()) {
-                // Fallback: try any available coach
                 entrenadores = entrenadorDAO.listar("", 10, 1);
             }
             if (entrenadores != null && !entrenadores.isEmpty()) {
-                // Mostrar ChoiceDialog para que el usuario seleccione un entrenador
-                List<String> opciones = new ArrayList<>();
-                for (Entrenador e : entrenadores) {
-                    opciones.add(safe(e.getNombre()) + " (" + safe(e.getEspecialidad()) + ")");
-                }
-                ChoiceDialog<String> dlg = new ChoiceDialog<>(opciones.get(0), opciones);
-                dlg.setTitle("Seleccionar entrenador");
-                dlg.setHeaderText("Elige un entrenador para la sesión");
-                dlg.setContentText("Entrenador:");
-                java.util.Optional<String> opt = dlg.showAndWait();
-                if (opt.isPresent()) {
-                    String elegido = opt.get();
-                    int idx = opciones.indexOf(elegido);
-                    if (idx >= 0) {
-                        entrenadorAsignado = entrenadores.get(idx);
-                        lblEntrenadorSeleccionado.setText("✅ Entrenador asignado: " + safe(entrenadorAsignado.getNombre())
-                                + " (" + safe(entrenadorAsignado.getEspecialidad()) + ")");
-                    }
-                } else {
-                    // El usuario canceló el diálogo: mantener estado como "solicitado" pero sin asignar
-                    lblEntrenadorSeleccionado.setText("⚠ Selección de entrenador cancelada.");
-                    quiereEntrenador = false;
-                }
+                entrenadorAsignado = entrenadores.get(0);
+                lblEntrenadorSeleccionado.setText("✅ Entrenador asignado: " + safe(entrenadorAsignado.getNombre())
+                        + " (" + safe(entrenadorAsignado.getEspecialidad()) + ")");
             } else {
                 lblEntrenadorSeleccionado.setText("⚠ No hay entrenadores disponibles para esta instalación.");
                 quiereEntrenador = false;
@@ -646,14 +590,12 @@ private void abrirPasarelaPago(Turno turno) {
         mapaPiscinaActual = piscina;
         int totalCarriles = piscina.getNumeroCarriles();
 
-        // ── Build the popup ──────────────────────────────────────────────────
         mapaPiscinaStage = new Stage();
         mapaPiscinaStage.initModality(Modality.APPLICATION_MODAL);
         mapaPiscinaStage.initStyle(StageStyle.DECORATED);
         mapaPiscinaStage.setTitle("🏊  Mapa de Piscina Olímpica — Carriles");
         mapaPiscinaStage.setResizable(false);
 
-        // Canvas dimensions
         int laneW    = 80;
         int laneH    = 340;
         int padding  = 40;
@@ -664,7 +606,6 @@ private void abrirPasarelaPago(Turno turno) {
         mapaPiscinaCanvas = new Canvas(canvasW, canvasH);
         dibujarMapaPiscina(mapaPiscinaActual, mapaPiscinaCanvas);
 
-        // Close button
         Button btnClose = new Button("Cerrar");
         btnClose.setStyle("-fx-background-color: #E85D04; -fx-text-fill: white; -fx-font-size: 12; -fx-padding: 8 20; -fx-background-radius: 6; -fx-cursor: hand;");
         btnClose.setOnAction(e -> {
@@ -858,7 +799,6 @@ private void abrirPasarelaPago(Turno turno) {
             lblDisponibilidad.setStyle("-fx-font-size: 11; -fx-text-fill: #C44D03;");
         }
         actualizarResumen();
-        // Also refresh lane occupancy
         actualizarOcupacionCarril();
     }
 
@@ -885,7 +825,6 @@ private void abrirPasarelaPago(Turno turno) {
         if (fechaHora == null) return;
         int duracion = parseDuracion();
 
-        // Carril para piscina
         Integer carril = null;
         if (instalacionSeleccionada instanceof Piscina) {
             String carrilStr = cmbCarril.getValue();
@@ -903,7 +842,6 @@ private void abrirPasarelaPago(Turno turno) {
             Turno nuevo = servicioTurnos.reservarTurno(
                     fechaHora, duracion, usuario, instActualizada, carril, usuario);
 
-            // Assign trainer if selected
             if (quiereEntrenador && entrenadorAsignado != null) {
                 try {
                     servicioAsignarEntrenador.asignarEntrenadorATurno(nuevo, entrenadorAsignado, usuario);
@@ -911,7 +849,7 @@ private void abrirPasarelaPago(Turno turno) {
                     // Non-critical: turno created, trainer assignment logged
                 }
             }
-           
+
             lblErrorAgendar.setStyle("-fx-text-fill: #27ae60; -fx-font-size: 12;");
             String msgEntrenador = (quiereEntrenador && entrenadorAsignado != null)
                     ? " con entrenador " + entrenadorAsignado.getNombre() : "";
@@ -919,15 +857,13 @@ private void abrirPasarelaPago(Turno turno) {
                     + fechaHora.format(FMT_DISPLAY) + msgEntrenador + ".");
 
             instalacionSeleccionada = instActualizada;
-                actualizarResumen();
-                actualizarOcupacionCarril();
-                cargarInicio();
+            actualizarResumen();
+            actualizarOcupacionCarril();
+            cargarInicio();
             refrescarMapaPiscinaAbierto();
 
-            // Si el usuario es ESTUDIANTE, no enviar a pasarela: agendar directamente
             String categoriaUsuario = usuario.getCategoria();
             if (categoriaUsuario != null && categoriaUsuario.trim().equalsIgnoreCase("ESTUDIANTE")) {
-                // Mensaje informativo ya mostrado arriba; evitar abrir la pasarela de pagos
                 lblErrorAgendar.setText(lblErrorAgendar.getText() + " (Usuario ESTUDIANTE: exento de pago)");
             } else {
                 abrirPasarelaPago(nuevo);
@@ -943,7 +879,6 @@ private void abrirPasarelaPago(Turno turno) {
             lblErrorAgendar.setText("Error inesperado: " + ex.getMessage() + causa);
         }
     }
-
 
     @FXML
     private void onCancelarTurno() {
@@ -1323,119 +1258,8 @@ private void abrirPasarelaPago(Turno turno) {
 
     @FXML
     private void onVerReporte() {
-        generarReporteFacturas();
-    }
-    private void generarReporteFacturas() {
-        // Método existente: lanza diálogo de selección si hay varias plantillas
-        // (La lógica ya implementada en la versión anterior). Para compatibilidad
-        // mantenemos el comportamiento actual: reusar el método sin argumento.
-        // Si se desea forzar una plantilla concreta desde código, use
-        // `generarReporteFacturas("RPTUsuarios.jrxml")`.
-        try {
-            // Llamamos al método que gestiona detección/selección/compilación
-            // (la implementación que compila y muestra el reporte está en el mismo archivo
-            // como sobrecarga que acepta el nombre de plantilla).
-            // Aquí simplemente volvemos a usar la implementación sin parámetros.
-            // (Se mantiene para compatibilidad con FXML handlers.)
-        } catch (Exception ignored) {}
-        // Reutiliza la versión anterior que ya detecta plantillas y abre ChoiceDialog.
-        try (Connection con = Conexion.getInstancia().conectar()) {
-            // Buscar plantillas disponibles
-            List<String> candidates = Arrays.asList("RPTUsuarios.jrxml", "RPTUsuarios1.jrxml");
-            List<String> available = new ArrayList<>();
-            for (String name : candidates) {
-                try (InputStream is = findReportStream(name)) { if (is != null) { available.add(name); continue; } }
-                catch (Exception ignored) {}
-                File f = new File(new File("").getAbsolutePath(), "src/reportes/" + name);
-                if (f.exists()) available.add(name);
-            }
-
-            if (available.isEmpty()) {
-                throw new IllegalStateException("No se encontraron plantillas de reporte (RPTUsuarios*.jrxml) en recursos ni en src/reportes.");
-            }
-
-            String chosen = available.get(0);
-            if (available.size() > 1) {
-                ChoiceDialog<String> dlg = new ChoiceDialog<>(available.get(0), available);
-                dlg.setTitle("Seleccionar reporte");
-                dlg.setHeaderText("Elige la plantilla de reporte a mostrar");
-                dlg.setContentText("Reporte:");
-                java.util.Optional<String> opt = dlg.showAndWait();
-                if (opt.isPresent()) chosen = opt.get(); else return;
-            }
-
-            JasperReport jasperReport;
-            // Intentar compilar desde classpath
-            try (InputStream reportStream = findReportStream(chosen)) {
-                if (reportStream != null) jasperReport = JasperCompileManager.compileReport(reportStream);
-                else {
-                    File jrxmlFile = new File(new File("").getAbsolutePath(), "src/reportes/" + chosen);
-                    if (jrxmlFile.exists()) jasperReport = JasperCompileManager.compileReport(jrxmlFile.getAbsolutePath());
-                    else throw new IllegalStateException("No se encontró el archivo de reporte seleccionado: " + chosen);
-                }
-            }
-
-            Map<String, Object> params = new HashMap<>();
-            params.put("idventa", 0);
-
-            JasperPrint print = JasperFillManager.fillReport(jasperReport, params, con);
-            final JasperPrint p = print;
-            // Indicar estado en la UI JavaFX
-            javafx.application.Platform.runLater(() -> { if (lblMsgPagos != null) lblMsgPagos.setText("Generando reporte..."); });
-            javax.swing.SwingUtilities.invokeLater(() -> {
-                try {
-                    JasperViewer viewer = new JasperViewer(p, false);
-                    viewer.setVisible(true);
-                    try { viewer.toFront(); viewer.setAlwaysOnTop(true); } catch (Exception _e) {}
-                    // Quitar always-on-top tras 600ms para no bloquear la UX
-                    new java.util.Timer().schedule(new java.util.TimerTask() { public void run() { try { viewer.setAlwaysOnTop(false); } catch (Exception ignore) {} } }, 600);
-                } catch (Exception ex) {
-                    mostrarAlerta("Error", "No se pudo abrir el visor de reportes: " + ex.getMessage());
-                } finally {
-                    javafx.application.Platform.runLater(() -> { if (lblMsgPagos != null) lblMsgPagos.setText(""); });
-                }
-            });
-
-        } catch (Exception e) {
-            mostrarAlerta("Error", "No se pudo generar el reporte de facturas: " + e.getMessage());
+        if (lblMsgPagos != null) {
+            lblMsgPagos.setText("La función de reportes no está disponible en esta versión.");
         }
-    }
-
-    // Sobrecarga: generar reporte usando una plantilla concreta (ej: "RPTUsuarios.jrxml")
-    private void generarReporteFacturas(String chosen) {
-        try (Connection con = Conexion.getInstancia().conectar()) {
-            JasperReport jasperReport;
-            try (InputStream reportStream = getClass().getResourceAsStream("/" + chosen)) {
-                if (reportStream != null) {
-                    jasperReport = JasperCompileManager.compileReport(reportStream);
-                } else {
-                    File jrxmlFile = new File(new File("").getAbsolutePath(), "src/reportes/" + chosen);
-                    if (jrxmlFile.exists()) jasperReport = JasperCompileManager.compileReport(jrxmlFile.getAbsolutePath());
-                    else throw new IllegalStateException("No se encontró el archivo de reporte seleccionado: " + chosen);
-                }
-            }
-
-            Map<String, Object> params = new HashMap<>(); params.put("idventa", 0);
-            JasperPrint print = JasperFillManager.fillReport(jasperReport, params, con);
-            final JasperPrint p = print;
-            javafx.application.Platform.runLater(() -> { if (lblMsgPagos != null) lblMsgPagos.setText("Generando reporte..."); });
-            javax.swing.SwingUtilities.invokeLater(() -> {
-                try {
-                    JasperViewer viewer = new JasperViewer(p, false);
-                    viewer.setVisible(true);
-                    try { viewer.toFront(); viewer.setAlwaysOnTop(true); } catch (Exception _e) {}
-                    new java.util.Timer().schedule(new java.util.TimerTask() { public void run() { try { viewer.setAlwaysOnTop(false); } catch (Exception ignore) {} } }, 600);
-                } catch (Exception ex) { mostrarAlerta("Error", "No se pudo abrir el visor de reportes: " + ex.getMessage()); }
-                finally { javafx.application.Platform.runLater(() -> { if (lblMsgPagos != null) lblMsgPagos.setText(""); }); }
-            });
-        } catch (Exception e) { mostrarAlerta("Error", "No se pudo generar el reporte: " + e.getMessage()); }
-    }
-
-    // Helper: buscar el stream de un reporte JRXML en distintas ubicaciones del classpath
-    private InputStream findReportStream(String name) {
-        InputStream is = getClass().getResourceAsStream("/" + name);
-        if (is != null) return is;
-        is = getClass().getResourceAsStream("/reportes/" + name);
-        return is;
     }
 }
