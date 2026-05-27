@@ -1,16 +1,22 @@
 package negocio;
 
-import dao.*;
-import entidades.*;
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Map;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
+import dao.AuditLogDAO;
+import dao.EntrenadorDAO;
+import dao.InstalacionDAO;
+import dao.PersonaDAO;
+import dao.SedeDAO;
+import dao.TurnoDAO;
 import database.Conexion;
+import entidades.Sede;
+import entidades.Turno;
+import entidades.Usuario;
 
 /**
  * AdminService — Lógica de negocio exclusiva del administrador.
@@ -280,7 +286,7 @@ public class AdminService {
                 stats.put("turnosHoy",             rs.getString("turnos_hoy"));
                 stats.put("turnosFuturosActivos",  rs.getString("turnos_futuros_activos"));
                 stats.put("totalEntrenadores",     rs.getString("total_entrenadores"));
-                stats.put("cancelacionesMes",      rs.getString("cancelaciones_mes"));
+                stats.put("cancelacionesMes",      contarCancelacionesUltimos30Dias());
                 stats.put("ingresosMes",           rs.getString("ingresos_mes"));
             }
         } catch (SQLException e) {
@@ -289,12 +295,47 @@ public class AdminService {
             stats.put("turnosHoy",            contarSimple("SELECT COUNT(*) FROM turno WHERE DATE(fechaHora)=CURDATE()"));
             stats.put("turnosFuturosActivos", contarSimple("SELECT COUNT(*) FROM turno WHERE estado='RESERVADO' AND fechaHora>=NOW()"));
             stats.put("totalEntrenadores",    contarSimple("SELECT COUNT(*) FROM entrenador"));
-            stats.put("cancelacionesMes",     "—");
-            stats.put("ingresosMes",          "—");
+            // Cancelaciones: admin y usuario quedan registradas en historial_citas
+            stats.put("cancelacionesMes",     contarCancelacionesUltimos30Dias());
+            String suma = sumarMontoSimple("SELECT COALESCE(SUM(monto),0) FROM pagos WHERE estadoPago = 'COMPLETADO' AND fechaPago >= DATE_SUB(NOW(), INTERVAL 30 DAY)");
+            stats.put("ingresosMes",          (suma == null ? "—" : ("$ " + suma)));
         } finally {
             conexion.desconectar();
         }
         return stats;
+    }
+
+    /**
+     * Cuenta todas las cancelaciones registradas en el historial dentro de los últimos 30 días.
+     * Esto incluye cancelaciones hechas por usuario y por administrador.
+     */
+    private String contarCancelacionesUltimos30Dias() {
+        return contarSimple(
+                "SELECT COUNT(*) FROM historial_citas " +
+                "WHERE estado = 'CANCELADO' " +
+                "AND fecha_evento >= DATE_SUB(NOW(), INTERVAL 30 DAY)"
+        );
+    }
+
+    /**
+     * Ejecuta una consulta que devuelve la suma (BIGDECIMAL) en la primera columna y la
+     * devuelve como string sin formato. Retorna null si hay error.
+     */
+    private String sumarMontoSimple(String sql) {
+        Connection con = conexion.conectar();
+        if (con == null) return null;
+        try (PreparedStatement ps = con.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                java.math.BigDecimal val = rs.getBigDecimal(1);
+                return val != null ? val.toPlainString() : "0";
+            }
+            return "0";
+        } catch (SQLException e) {
+            return null;
+        } finally {
+            conexion.desconectar();
+        }
     }
 
     // ─── PRIVADOS ─────────────────────────────────────────────────────────────

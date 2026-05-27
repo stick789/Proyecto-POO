@@ -7,12 +7,14 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import dao.EntrenadorDAO;
 import dao.InstalacionDAO;
@@ -125,6 +127,7 @@ public class Dashboardadmincontroller implements Initializable {
     @FXML private TableColumn<Instalacion, String>  colInstalacionTipo;
     @FXML private TableColumn<Instalacion, String>  colInstalacionCapacidad;
     @FXML private TableColumn<Instalacion, String>  colInstalacionAforo;
+    @FXML private TableColumn<Instalacion, String>  colInstalacionSede;
     @FXML private TableColumn<Instalacion, String>  colInstalacionEstado;
     @FXML private TableColumn<Instalacion, String>  colInstalacionAcciones;
     @FXML private Label                             lblMsgInstalaciones;
@@ -157,12 +160,15 @@ public class Dashboardadmincontroller implements Initializable {
     @FXML private TableColumn<Sede, String>         colSedeEmail;
     @FXML private TableColumn<Sede, String>         colSedeAcciones;
     @FXML private Label                             lblMsgSedes;
-
+    // ─── Busquedas en las tablas───────────────────────────────────────────────
+    @FXML private TextField txtBuscarTurnoId;
+    @FXML private TextField txtBuscarPagoId;
     // ── Estado ────────────────────────────────────────────────────────────────
     private AdminService adminService;
     private int adminId = 0;
     private boolean esSuperAdmin = false;
-
+    private List<Turno> listaTurnosCompleta = new ArrayList<>();
+    private List<Pago> listaPagosCompleta = new ArrayList<>();
     // ─────────────────────────────────────────────────────────────────────────
     //  INITIALIZE
     // ─────────────────────────────────────────────────────────────────────────
@@ -307,13 +313,24 @@ public class Dashboardadmincontroller implements Initializable {
                 new SimpleStringProperty(String.valueOf(c.getValue().getIdInstalacion())));
         if (colInstalacionNombre != null)
             colInstalacionNombre.setCellValueFactory(c ->
-                    new SimpleStringProperty(safe(c.getValue().getClass().getSimpleName())));
+                new SimpleStringProperty(
+                    (c.getValue().getNombre() != null && !c.getValue().getNombre().isBlank())
+                        ? c.getValue().getNombre()
+                        : c.getValue().getClass().getSimpleName()
+                ));
         colInstalacionTipo.setCellValueFactory(c ->
                 new SimpleStringProperty(safe(c.getValue().getTipo())));
         colInstalacionCapacidad.setCellValueFactory(c ->
                 new SimpleStringProperty(String.valueOf(c.getValue().getCapacidadMaxima())));
         colInstalacionAforo.setCellValueFactory(c ->
                 new SimpleStringProperty(String.valueOf(c.getValue().getAforoActual())));
+        if (colInstalacionSede != null)
+            colInstalacionSede.setCellValueFactory(c ->
+                new SimpleStringProperty(
+                    (c.getValue().getNombreSede() != null && !c.getValue().getNombreSede().isBlank())
+                        ? c.getValue().getNombreSede()
+                        : (c.getValue().getIdSede() > 0 ? String.valueOf(c.getValue().getIdSede()) : "—")
+                ));
         if (colInstalacionEstado != null)
             colInstalacionEstado.setCellValueFactory(c -> new SimpleStringProperty("ABIERTA"));
         if (colInstalacionAcciones != null) {
@@ -706,21 +723,24 @@ public class Dashboardadmincontroller implements Initializable {
         }
     }
 
-    private void cargarTurnos() {
-        try {
-            if (adminId > 0) {
-                List<Turno> lista = new TurnoDAO(new PersonaDAO(), new InstalacionDAO(), new EntrenadorDAO()).listarTodos();
-                tablaTurnos.setItems(FXCollections.observableArrayList(lista != null ? lista : crearTurnosDemo()));
-                if (lblMsgTurnos != null) lblMsgTurnos.setText("");
-            } else {
-                tablaTurnos.setItems(FXCollections.observableArrayList(crearTurnosDemo()));
-                if (lblMsgTurnos != null) lblMsgTurnos.setText("(modo demo)");
-            }
-        } catch (Exception e) {
-            tablaTurnos.setItems(FXCollections.observableArrayList(crearTurnosDemo()));
-            if (lblMsgTurnos != null) lblMsgTurnos.setText("Error BD – mostrando demo");
+   private void cargarTurnos() {
+    try {
+        if (adminId > 0) {
+            List<Turno> lista = new TurnoDAO(new PersonaDAO(), new InstalacionDAO(), new EntrenadorDAO()).listarTodos();
+            listaTurnosCompleta = lista != null ? lista : crearTurnosDemo();
+            tablaTurnos.setItems(FXCollections.observableArrayList(listaTurnosCompleta));
+            if (lblMsgTurnos != null) lblMsgTurnos.setText("");
+        } else {
+            listaTurnosCompleta = crearTurnosDemo();
+            tablaTurnos.setItems(FXCollections.observableArrayList(listaTurnosCompleta));
+            if (lblMsgTurnos != null) lblMsgTurnos.setText("(modo demo)");
         }
+    } catch (Exception e) {
+        listaTurnosCompleta = crearTurnosDemo();
+        tablaTurnos.setItems(FXCollections.observableArrayList(listaTurnosCompleta));
+        if (lblMsgTurnos != null) lblMsgTurnos.setText("Error BD – mostrando demo");
     }
+}
 
     private void cargarInstalaciones() {
         try {
@@ -739,20 +759,23 @@ public class Dashboardadmincontroller implements Initializable {
     }
 
     private void cargarPagos() {
-        try {
-            if (adminId > 0) {
-                List<Pago> lista = new PagoDAO().listarTodos(200, 1);
-                tablaPagos.setItems(FXCollections.observableArrayList(lista != null ? lista : crearPagosDemo()));
-                if (lblMsgPagos != null) lblMsgPagos.setText("");
-            } else {
-                tablaPagos.setItems(FXCollections.observableArrayList(crearPagosDemo()));
-                if (lblMsgPagos != null) lblMsgPagos.setText("(modo demo)");
-            }
-        } catch (Exception e) {
-            tablaPagos.setItems(FXCollections.observableArrayList(crearPagosDemo()));
-            if (lblMsgPagos != null) lblMsgPagos.setText("Error BD – mostrando demo");
+    try {
+        if (adminId > 0) {
+            List<Pago> lista = new PagoDAO().listarTodos(200, 1);
+            listaPagosCompleta = lista != null ? lista : crearPagosDemo();
+            tablaPagos.setItems(FXCollections.observableArrayList(listaPagosCompleta));
+            if (lblMsgPagos != null) lblMsgPagos.setText("");
+        } else {
+            listaPagosCompleta = crearPagosDemo();
+            tablaPagos.setItems(FXCollections.observableArrayList(listaPagosCompleta));
+            if (lblMsgPagos != null) lblMsgPagos.setText("(modo demo)");
         }
+    } catch (Exception e) {
+        listaPagosCompleta = crearPagosDemo();
+        tablaPagos.setItems(FXCollections.observableArrayList(listaPagosCompleta));
+        if (lblMsgPagos != null) lblMsgPagos.setText("Error BD – mostrando demo");
     }
+}
 
     private void cargarEntrenadores() {
         try {
@@ -924,7 +947,68 @@ public class Dashboardadmincontroller implements Initializable {
     private List<Sede> crearSedesDemo() {
         return Arrays.asList(new Sede(1, "Sede Norte", "Calle 100 # 15-30", "601-555-1111", "norte@socrates.com"));
     }
+    // _________________________________________________________________________
+    // Metodos de Busqueda
+    // _________________________________________________________________________
+@FXML
+private void buscarTurnoPorId() {
+    String texto = txtBuscarTurnoId.getText().trim();
+    if (texto.isEmpty()) {
+        tablaTurnos.setItems(FXCollections.observableArrayList(listaTurnosCompleta));
+        return;
+    }
+    try {
+        int idBuscado = Integer.parseInt(texto);
+        List<Turno> filtrados = listaTurnosCompleta.stream()
+                .filter(t -> t.getIdTurno() == idBuscado)
+                .collect(Collectors.toList());
+        tablaTurnos.setItems(FXCollections.observableArrayList(filtrados));
+        if (filtrados.isEmpty()) {
+            lblMsgTurnos.setText("No se encontró ningún turno con ID " + idBuscado);
+        } else {
+            lblMsgTurnos.setText("");
+        }
+    } catch (NumberFormatException e) {
+        lblMsgTurnos.setText("Ingrese un número válido (ID de turno)");
+    }
+}
 
+@FXML
+private void limpiarFiltroTurnos() {
+    txtBuscarTurnoId.clear();
+    tablaTurnos.setItems(FXCollections.observableArrayList(listaTurnosCompleta));
+    lblMsgTurnos.setText("");
+}
+
+@FXML
+private void buscarPagoPorId() {
+    String texto = txtBuscarPagoId.getText().trim();
+    if (texto.isEmpty()) {
+        tablaPagos.setItems(FXCollections.observableArrayList(listaPagosCompleta));
+        return;
+    }
+    try {
+        long idBuscado = Long.parseLong(texto);
+        List<Pago> filtrados = listaPagosCompleta.stream()
+                .filter(p -> p.getIdPago() == idBuscado)
+                .collect(Collectors.toList());
+        tablaPagos.setItems(FXCollections.observableArrayList(filtrados));
+        if (filtrados.isEmpty()) {
+            lblMsgPagos.setText("No se encontró ningún pago con ID " + idBuscado);
+        } else {
+            lblMsgPagos.setText("");
+        }
+    } catch (NumberFormatException e) {
+        lblMsgPagos.setText("Ingrese un número válido (ID de pago)");
+    }
+}
+
+@FXML
+private void limpiarFiltroPagos() {
+    txtBuscarPagoId.clear();
+    tablaPagos.setItems(FXCollections.observableArrayList(listaPagosCompleta));
+    lblMsgPagos.setText("");
+}
     // ─────────────────────────────────────────────────────────────────────────
     //  UTILIDADES UI
     // ─────────────────────────────────────────────────────────────────────────
